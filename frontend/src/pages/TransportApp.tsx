@@ -10,7 +10,7 @@ interface TransportAppProps {
 
 export default function TransportApp({ onBack }: TransportAppProps) {
   return (
-    <div className="flex h-screen bg-black text-gray-100 flex-col md:flex-row overflow-hidden w-full max-w-full">
+    <div className="flex h-screen bg-gray-900 text-gray-100 flex-col md:flex-row overflow-hidden w-full max-w-full">
       {/* Sidebar for Search and Routes */}
       <aside className="w-full md:w-96 bg-gray-900 shadow-2xl z-10 flex flex-col relative h-[50vh] md:h-full border-r border-green-900/30">
         <div className="p-4 border-b border-gray-800 shrink-0 flex items-center justify-between">
@@ -34,11 +34,20 @@ export default function TransportApp({ onBack }: TransportAppProps) {
       </aside>
 
       {/* Main Map Area */}
-      <main className="flex-1 relative bg-gray-950 h-[50vh] md:h-full z-10">
-        <MapView />
+      <div className='flex-1 relative p-4 rounded-xl md:rounded-none md:p-0 '>
+        <main className=" flex-1 relative bg-gray-900 h-[50vh] md:h-[90vh]  ">
+          <MapView />
 
-      </main>
-      <Footer />
+        </main>
+        <Footer />
+
+
+
+      </div>
+
+
+
+
     </div>
   );
 }
