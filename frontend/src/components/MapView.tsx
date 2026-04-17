@@ -19,12 +19,13 @@ export default function MapView() {
   const adamaCenter: [number, number] = [8.5400, 39.2700];
 
   return (
-    <div className="h-full w-full relative ">
+    <div className="h-full w-full relative flex-1 z-10 rounded-xl">
       <MapContainer
         center={adamaCenter}
         zoom={14}
         scrollWheelZoom={true}
         className="h-full w-full"
+        style={{ height: '100%', width: '100%' }}
       >
         {/* OpenStreetMap standard tiles */}
         <TileLayer
