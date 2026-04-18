@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 
 interface LocationInputProps {
   value: string;
-  onChange: (val: string) => void;
+  onChange: (val: string, coords?: [number, number]) => void;
 }
 
 export default function LocationInput({ value, onChange }: LocationInputProps) {
@@ -18,18 +18,40 @@ export default function LocationInput({ value, onChange }: LocationInputProps) {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (_position) => {
-        // Here we could use reverse geocoding if we had an API.
-        // For MVP, we simply show "Your Location"
-        setStatus('success');
-        onChange('Your Location');
+      async (_position) => {
+        const lat = _position.coords.latitude;
+        const lon = _position.coords.longitude;
+
+        try {
+          // Reverse geocoding using Nominatim
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+          if (!res.ok) throw new Error("Geocoding failed");
+          const data = await res.json();
+
+          if (data && data.address) {
+            const { address } = data;
+            const place = address.amenity || address.building || address.neighbourhood || address.road || address.suburb;
+            const city = address.city || address.town || address.county || '';
+            const label = place ? `${place}, ${city}`.replace(/,\s*$/, '') : 'Your Location';
+
+            setStatus('success');
+            onChange(label, [lat, lon]);
+          } else {
+            setStatus('success');
+            onChange('Your Location', [lat, lon]);
+          }
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          setStatus('success');
+          onChange('Your Location', [lat, lon]);
+        }
       },
       (_error) => {
         // Permission denied or unavailable
         setStatus('error');
       }
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -56,3 +78,4 @@ export default function LocationInput({ value, onChange }: LocationInputProps) {
     </div>
   );
 }
+

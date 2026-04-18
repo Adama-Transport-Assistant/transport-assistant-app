@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import type { RouteOption } from '../data/mockData';
 import RouteResults from './RouteResults';
@@ -7,7 +7,7 @@ import RouteDropdown from './RouteDropdown';
 
 interface SearchUIProps {
   origin: string;
-  setOrigin: (val: string) => void;
+  setOrigin: (val: string, coords?: [number, number]) => void;
   destination: string;
   setDestination: (val: string) => void;
   routes: RouteOption[];
@@ -70,4 +70,5 @@ export default function SearchUI({
     </div>
   );
 }
+
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import MapView from '../components/MapView';
 import Footer from '../components/Footer';
 import SearchUI from '../components/SearchUI';
@@ -10,25 +10,29 @@ interface TransportAppProps {
 
 export default function TransportApp({ onBack }: TransportAppProps) {
   const [origin, setOrigin] = useState('');
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [destination, setDestination] = useState('');
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  const handleSetOrigin = (val: string, coords?: [number, number]) => {
+    setOrigin(val);
+    if (coords) setUserLocation(coords);
+  };
+
   const handleSearch = () => {
     setIsSearching(true);
     setSearchError(null);
     setRoutes([]);
     setSelectedRouteId(null);
-    
-    // Simulate network delay
+
     setTimeout(() => {
-      // Find matching routes (Origin string might be "Your Location" or fallback text)
-      // Destination is exact match from dropdown
-      const matchedRoutes = mockRoutes.filter(r => 
+      // Find matching routes. User might be at a reverse geocoded place, so we loosely match.
+      const matchedRoutes = mockRoutes.filter(r =>
         r.destination.toLowerCase() === destination.toLowerCase() &&
-        (origin === 'Your Location' || r.origin.toLowerCase().includes(origin.toLowerCase()))
+        (userLocation !== null || origin === 'Your Location' || r.origin.toLowerCase().includes(origin.toLowerCase()) || origin.toLowerCase().includes(r.origin.toLowerCase()))
       );
 
       if (matchedRoutes.length > 0) {
@@ -63,9 +67,9 @@ export default function TransportApp({ onBack }: TransportAppProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <SearchUI 
+          <SearchUI
             origin={origin}
-            setOrigin={setOrigin}
+            setOrigin={handleSetOrigin}
             destination={destination}
             setDestination={setDestination}
             routes={routes}
@@ -81,10 +85,11 @@ export default function TransportApp({ onBack }: TransportAppProps) {
       {/* Main Map Area */}
       <div className='flex-1 relative p-4 rounded-xl md:rounded-none md:p-0 flex flex-col'>
         <main className="flex-1 relative bg-gray-900 h-full w-full">
-          <MapView selectedRoute={selectedRoute} />
+          <MapView selectedRoute={selectedRoute} userLocation={userLocation} originLabel={origin} />
         </main>
         <Footer />
       </div>
     </div>
   );
 }
+
