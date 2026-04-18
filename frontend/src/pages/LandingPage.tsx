@@ -11,7 +11,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 w-full">
         <div className="max-w-2xl text-center space-y-8">
           <div className="inline-block p-4 rounded-full bg-green-900/30 mb-4">
-            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">
+            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-green-400 to-green-600">
               Smart Transport
             </h1>
           </div>
