@@ -1,14 +1,48 @@
-
+import React, { useState } from 'react';
 import MapView from '../components/MapView';
 import Footer from '../components/Footer';
 import SearchUI from '../components/SearchUI';
-;
+import { mockRoutes, type RouteOption } from '../data/mockData';
 
 interface TransportAppProps {
   onBack: () => void;
 }
 
 export default function TransportApp({ onBack }: TransportAppProps) {
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const handleSearch = () => {
+    setIsSearching(true);
+    setSearchError(null);
+    setRoutes([]);
+    setSelectedRouteId(null);
+    
+    // Simulate network delay
+    setTimeout(() => {
+      // Find matching routes (Origin string might be "Your Location" or fallback text)
+      // Destination is exact match from dropdown
+      const matchedRoutes = mockRoutes.filter(r => 
+        r.destination.toLowerCase() === destination.toLowerCase() &&
+        (origin === 'Your Location' || r.origin.toLowerCase().includes(origin.toLowerCase()))
+      );
+
+      if (matchedRoutes.length > 0) {
+        setRoutes(matchedRoutes);
+        setSelectedRouteId(matchedRoutes[0].id); // Auto-select first route
+      } else {
+        setSearchError('Route not found between these locations.');
+      }
+      setIsSearching(false);
+    }, 600);
+  };
+
+  const selectedRoute = routes.find(r => r.id === selectedRouteId) || null;
+
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100 flex-col md:flex-row overflow-hidden w-full max-w-full">
       {/* Sidebar for Search and Routes */}
@@ -29,25 +63,28 @@ export default function TransportApp({ onBack }: TransportAppProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <SearchUI />
+          <SearchUI 
+            origin={origin}
+            setOrigin={setOrigin}
+            destination={destination}
+            setDestination={setDestination}
+            routes={routes}
+            onSearch={handleSearch}
+            selectedRouteId={selectedRouteId}
+            onSelectRoute={setSelectedRouteId}
+            isSearching={isSearching}
+            searchError={searchError}
+          />
         </div>
       </aside>
 
       {/* Main Map Area */}
-      <div className='flex-1 relative p-4 rounded-xl md:rounded-none md:p-0 '>
-        <main className=" flex-1 relative bg-gray-900 h-[50vh] md:h-[90vh]  ">
-          <MapView />
-
+      <div className='flex-1 relative p-4 rounded-xl md:rounded-none md:p-0 flex flex-col'>
+        <main className="flex-1 relative bg-gray-900 h-full w-full">
+          <MapView selectedRoute={selectedRoute} />
         </main>
         <Footer />
-
-
-
       </div>
-
-
-
-
     </div>
   );
 }
