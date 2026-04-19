@@ -94,7 +94,7 @@ export default function RouteOptionsScreen({
   const selectedRoute = routes.find(r => r.id === selectedRouteId) || null;
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 screen-enter">
+    <div className="flex flex-col h-full bg-white md:bg-gray-50 screen-enter">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
         <button
@@ -109,7 +109,7 @@ export default function RouteOptionsScreen({
       {/* Body: sidebar + map on desktop, stacked on mobile */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* Left panel — route cards */}
-        <div className="flex flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full">
+        <div className="flex flex-col flex-1 md:flex-initial md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full">
           {/* Map preview — mobile only */}
           <div className="shrink-0 px-4 pt-3 md:hidden">
             <MapView

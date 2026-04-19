@@ -126,7 +126,7 @@ export default function HomeScreen({
   return (
     <div className="flex flex-col md:flex-row h-full bg-gray-50 screen-enter">
       {/* ---- LEFT COLUMN / MAIN CONTENT ---- */}
-      <div className="flex flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto">
+      <div className="flex flex-col h-full md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:overflow-y-auto">
         {/* Hero Section */}
         <div className="relative bg-gradient-to-br from-green-800 via-green-700 to-green-900 text-white px-5 pt-10 pb-20 md:pt-8 md:pb-16 md:m-4 md:rounded-2xl shrink-0">
           <div className="absolute inset-0 opacity-10 md:rounded-2xl" style={{
