@@ -1,7 +1,11 @@
-import { Controller } from '@nestjs/common';
-import { StopsService } from './stops.service';
+import { Controller, Get } from '@nestjs/common';
 
-@Controller('api/stops')
+@Controller('stops')
 export class StopsController {
-  constructor(private readonly stopsService: StopsService) {}
+  @Get()
+  getStopsInfo() {
+    return {
+      message: 'Stops module is ready. Stop listing endpoints will be added in the next iteration.',
+    };
+  }
 }

@@ -1,13 +1,14 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
 
 import { PlanRouteDto } from './dto/plan-route.dto';
+import { RoutePreferenceQueryDto } from './dto/route-preference-query.dto';
 import { RoutingService } from './routing.service';
 
 /**
  * RoutingController
  *
- * Mounted at /api/routes (appended to the global prefix /api/v1 in main.ts)
- * Full URL: POST /api/v1/routes/plan
+ * Mounted at /api/routes (appended to the global prefix /api in main.ts)
+ * Full URL: POST /api/routes/plan
  *
  * Accepts origin + destination coordinates and an optional preference flag,
  * returns 3–4 ordered route options for Adama city.
@@ -17,14 +18,17 @@ export class RoutingController {
   constructor(private readonly routingService: RoutingService) {}
 
   /**
-   * POST /api/v1/routes/plan
+   * POST /api/routes/plan?preference=fastest|cheapest|least-walking
    *
    * Body: PlanRouteDto
    * Returns ranked route itineraries based on the requested preference.
    */
   @Post('plan')
   @HttpCode(HttpStatus.OK)
-  plan(@Body() body: PlanRouteDto) {
-    return this.routingService.planRoute(body);
+  plan(@Body() body: PlanRouteDto, @Query() query: RoutePreferenceQueryDto) {
+    return this.routingService.planRoute({
+      ...body,
+      preference: query.preference ?? body.preference,
+    });
   }
 }

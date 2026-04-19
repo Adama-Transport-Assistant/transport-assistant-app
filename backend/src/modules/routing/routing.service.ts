@@ -7,7 +7,7 @@ import { RouteItinerary } from './interfaces/route-itinerary.interface';
  * RoutingService — MVP mock implementation.
  *
  * Returns 3–4 realistic route options for Adama city using local landmarks.
- * No external OTP or GTFS dependency; data is fully self-contained.
+ * Data is self-contained for the MVP and can be replaced later by live sources.
  * Replace mock data with real routing logic when live data becomes available.
  */
 @Injectable()
