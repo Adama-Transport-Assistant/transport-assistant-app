@@ -54,17 +54,13 @@ export default function NavigationScreen({
         )}
       </div>
 
-      {/* Body: sidebar + map on desktop, stacked on mobile */}
+      {/* ===== BODY ===== */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
-        {/* Left panel — instructions */}
-        <div className="flex flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto order-2 md:order-1">
-          {/* Bottom sheet handle on mobile */}
-          <div className="flex justify-center pt-2 pb-1 md:hidden">
-            <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
-          </div>
 
+        {/* --- LEFT PANEL (instructions) - desktop only uses this as sidebar --- */}
+        <div className="hidden md:flex md:flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto">
           {/* Steps */}
-          <div className="px-5 py-3 md:pt-5">
+          <div className="px-5 pt-5 pb-3">
             {route.steps.map((step, index) => (
               <div key={index} className="instruction-step">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shrink-0 mt-0.5">
@@ -81,8 +77,6 @@ export default function NavigationScreen({
                 </div>
               </div>
             ))}
-
-            {/* ETA and Cost */}
             <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-secondary" />
@@ -94,44 +88,32 @@ export default function NavigationScreen({
               </div>
             </div>
           </div>
-
-          {/* Offline Banner */}
           <div className="px-5 pb-3">
             <div className="offline-banner">
               <WifiOff size={14} />
               <span>Offline Mode: Navigation available without internet.</span>
             </div>
           </div>
-
-          {/* Download Map */}
           <div className="px-5 pb-3">
             <button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98]">
               <Download size={16} />
               Download Map
             </button>
           </div>
-
-          {/* Back / End Trip */}
           <div className="flex gap-3 px-5 pb-4">
-            <button
-              onClick={onBack}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
-            >
+            <button onClick={onBack} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer">
               <ChevronLeft size={16} />
               Back
             </button>
-            <button
-              onClick={onEndTrip}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98]"
-            >
+            <button onClick={onEndTrip} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98]">
               <XCircle size={16} />
               End Trip
             </button>
           </div>
         </div>
 
-        {/* Map — full width on mobile (stacked above), right panel on desktop */}
-        <div className="flex-1 min-h-[250px] md:min-h-0 md:h-full order-1 md:order-2">
+        {/* --- MAP (shared — takes remaining space on desktop, fixed height on mobile) --- */}
+        <div className="h-[35vh] shrink-0 md:h-full md:flex-1">
           <MapView
             selectedRoute={route}
             userLocation={userLocation}
@@ -140,6 +122,68 @@ export default function NavigationScreen({
             interactive={true}
             showControls={true}
           />
+        </div>
+
+        {/* --- MOBILE BOTTOM PANEL (scrollable steps + pinned buttons) --- */}
+        <div className="flex flex-col flex-1 min-h-0 bg-white md:hidden">
+          {/* Drag handle */}
+          <div className="flex justify-center pt-2 pb-1 shrink-0">
+            <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-4 pb-2">
+            {route.steps.map((step, index) => (
+              <div key={index} className="instruction-step">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">{index + 1}</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {getStepIcon(step.type)}
+                    <span className="text-sm font-medium text-gray-800">{step.instruction}</span>
+                  </div>
+                  {step.duration && (
+                    <span className="text-xs text-gray-400 ml-6">({step.duration})</span>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-6 mt-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5">
+                <Clock size={14} className="text-secondary" />
+                <span className="text-sm font-semibold text-gray-800">ETA: {route.durationMins} mins</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Banknote size={14} className="text-primary" />
+                <span className="text-sm font-semibold text-gray-800">Cost: {route.fareETB} ETB</span>
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="offline-banner">
+                <WifiOff size={14} />
+                <span>Offline Mode: Navigation available without internet.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pinned bottom actions — ALWAYS VISIBLE */}
+          <div className="shrink-0 bg-white border-t border-gray-200 px-4 pt-2 pb-3 space-y-2">
+            <button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98] text-sm">
+              <Download size={14} />
+              Download Map
+            </button>
+            <div className="flex gap-3">
+              <button onClick={onBack} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer text-sm">
+                <ChevronLeft size={14} />
+                Back
+              </button>
+              <button onClick={onEndTrip} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98] text-sm">
+                <XCircle size={14} />
+                End Trip
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
