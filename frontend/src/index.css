@@ -26,10 +26,9 @@
 }
 
 @layer components {
-  /* Mobile app shell */
+  /* Mobile app shell — full width on all devices */
   .app-shell {
-    @apply w-full max-w-md mx-auto min-h-screen bg-white relative overflow-hidden;
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.15);
+    @apply w-full min-h-screen bg-white relative overflow-hidden;
   }
 
   /* Screen transition */

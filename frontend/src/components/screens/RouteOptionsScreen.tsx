@@ -106,85 +106,98 @@ export default function RouteOptionsScreen({
         <h1 className="text-lg font-bold text-gray-900">Route Options</h1>
       </div>
 
-      {/* Map Preview */}
-      <div className="shrink-0 px-4 pt-3">
-        <MapView
-          selectedRoute={selectedRoute}
-          userLocation={userLocation}
-          originLabel={origin}
-          height="180px"
-          interactive={true}
-          showControls={true}
-        />
-      </div>
-
-      {/* Route Cards */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {routes.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-sm">No routes found. Try a different destination.</p>
+      {/* Body: sidebar + map on desktop, stacked on mobile */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        {/* Left panel — route cards */}
+        <div className="flex flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full">
+          {/* Map preview — mobile only */}
+          <div className="shrink-0 px-4 pt-3 md:hidden">
+            <MapView
+              selectedRoute={selectedRoute}
+              userLocation={userLocation}
+              originLabel={origin}
+              height="180px"
+              interactive={true}
+              showControls={true}
+            />
           </div>
-        ) : (
-          routes.map((route, index) => {
-            const isSelected = selectedRouteId === route.id;
-            return (
-              <div
-                key={route.id}
-                onClick={() => onSelectRoute(route.id)}
-                className={`route-card ${isSelected ? 'selected' : ''}`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Transport Icon */}
-                  {getTransportIcon(route.type)}
 
-                  {/* Route Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900 text-sm">
-                        Route {index + 1}
-                        <span className="text-gray-500 font-normal"> - {route.routeName}</span>
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock size={12} />
-                        {route.durationMins} min
-                      </span>
-                      <span className="text-xs font-semibold text-gray-800">{route.fareETB} ETB</span>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-2">
-                      {getTrafficBadge(route.traffic)}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectRoute(route.id);
-                        }}
-                        className="flex items-center gap-1 text-xs font-medium text-secondary border border-secondary/30 px-2.5 py-1 rounded-lg hover:bg-secondary/5 transition-colors cursor-pointer"
-                      >
-                        <Eye size={12} />
-                        View Details
-                      </button>
+          {/* Route cards */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-5 py-3 space-y-3">
+            {routes.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-sm">No routes found. Try a different destination.</p>
+              </div>
+            ) : (
+              routes.map((route, index) => {
+                const isSelected = selectedRouteId === route.id;
+                return (
+                  <div
+                    key={route.id}
+                    onClick={() => onSelectRoute(route.id)}
+                    className={`route-card ${isSelected ? 'selected' : ''}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {getTransportIcon(route.type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900 text-sm">
+                            Route {index + 1}
+                            <span className="text-gray-500 font-normal"> - {route.routeName}</span>
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <Clock size={12} />
+                            {route.durationMins} min
+                          </span>
+                          <span className="text-xs font-semibold text-gray-800">{route.fareETB} ETB</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          {getTrafficBadge(route.traffic)}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectRoute(route.id);
+                            }}
+                            className="flex items-center gap-1 text-xs font-medium text-secondary border border-secondary/30 px-2.5 py-1 rounded-lg hover:bg-secondary/5 transition-colors cursor-pointer"
+                          >
+                            <Eye size={12} />
+                            View Details
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+                );
+              })
+            )}
+          </div>
 
-      {/* Select Route Button */}
-      <div className="shrink-0 px-4 py-3 bg-white border-t border-gray-200">
-        <button
-          onClick={onNavigate}
-          disabled={!selectedRouteId}
-          className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
-        >
-          <CheckCircle size={18} />
-          Select Route
-        </button>
+          {/* Select Route Button */}
+          <div className="shrink-0 px-4 md:px-5 py-3 bg-white border-t border-gray-200">
+            <button
+              onClick={onNavigate}
+              disabled={!selectedRouteId}
+              className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
+            >
+              <CheckCircle size={18} />
+              Select Route
+            </button>
+          </div>
+        </div>
+
+        {/* Right panel — map (desktop only) */}
+        <div className="hidden md:block flex-1 h-full">
+          <MapView
+            selectedRoute={selectedRoute}
+            userLocation={userLocation}
+            originLabel={origin}
+            height="100%"
+            interactive={true}
+            showControls={true}
+          />
+        </div>
       </div>
     </div>
   );
