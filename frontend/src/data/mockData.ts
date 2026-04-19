@@ -20,13 +20,20 @@ export interface RouteOption {
 
 export const locations = [
   "Posta Bet",
-  "Piazza",
+  "College",
   "Mebrat Hail",
   "Kebele 03",
+  "Firanko",
   "Derartu Tulu Park",
   "Adama Stadium",
   "Nazareth Hospital",
-  "Menahariya"
+  "Menahariya",
+  "kebele 04",
+  "Bole",
+  "Wangari",
+  "Ganda Gara",
+  "Amade",
+
 ];
 
 // Combine origins and destinations to make complete routes
