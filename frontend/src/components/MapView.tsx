@@ -32,20 +32,44 @@ const DestinationIcon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
+// Validate that a coordinate pair has real numbers
+function isValidLatLng(coords: [number, number]): boolean {
+  return (
+    Array.isArray(coords) &&
+    coords.length === 2 &&
+    typeof coords[0] === 'number' &&
+    typeof coords[1] === 'number' &&
+    !isNaN(coords[0]) &&
+    !isNaN(coords[1]) &&
+    isFinite(coords[0]) &&
+    isFinite(coords[1])
+  );
+}
+
 // Component to handle auto-fitting bounds based on current route or user location
 function MapBoundsFit({ path, userLocation }: { path?: [number, number][], userLocation?: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (path && path.length > 0) {
-      // If we have a route, fit bounds to the route including user location if available
-      const allPoints = [...path];
-      if (userLocation) allPoints.push(userLocation);
-      
-      const bounds = L.latLngBounds(allPoints);
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17, animate: true, duration: 0.5 });
-    } else if (userLocation) {
-      // If only user location is known, center and zoom in
-      map.flyTo(userLocation, 16, { animate: true, duration: 1 });
+    // Guard: skip if the map's container has zero size (hidden via CSS)
+    const size = map.getSize();
+    if (!size || size.x === 0 || size.y === 0) return;
+
+    try {
+      if (path && path.length > 0) {
+        const validPoints = path.filter(isValidLatLng);
+        if (userLocation && isValidLatLng(userLocation)) validPoints.push(userLocation);
+        if (validPoints.length === 0) return;
+
+        const bounds = L.latLngBounds(validPoints);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17, animate: false });
+        }
+      } else if (userLocation && isValidLatLng(userLocation)) {
+        map.setView(userLocation, 16, { animate: false });
+      }
+    } catch (e) {
+      // Silently ignore Leaflet projection errors (e.g. during resize transitions)
+      console.warn('MapBoundsFit: skipped view change', e);
     }
   }, [path, userLocation, map]);
   return null;
@@ -72,9 +96,9 @@ interface MapViewProps {
   showControls?: boolean;
 }
 
-export default function MapView({ 
-  selectedRoute, 
-  userLocation, 
+export default function MapView({
+  selectedRoute,
+  userLocation,
   originLabel,
   height = '100%',
   interactive = true,
@@ -83,7 +107,7 @@ export default function MapView({
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center if no user location and no route
   const adamaCenter: [number, number] = [8.5400, 39.2700];
-  
+
   const centerCoord = userLocation || (selectedRoute && selectedRoute.path[0]) || adamaCenter;
 
   return (
@@ -173,9 +197,9 @@ export default function MapView({
 
         {/* Route Polyline connecting Origin strictly to Destination */}
         {selectedRoute && (
-          <Polyline 
-            positions={userLocation ? [userLocation, ...selectedRoute.path] : selectedRoute.path} 
-            color="#2563eb" 
+          <Polyline
+            positions={userLocation ? [userLocation, ...selectedRoute.path] : selectedRoute.path}
+            color="#2563eb"
             weight={5}
             opacity={0.85}
             dashArray="0"
@@ -183,7 +207,7 @@ export default function MapView({
             lineJoin="round"
           />
         )}
-        
+
         <MapBoundsFit path={selectedRoute?.path} userLocation={userLocation} />
         <MapResizer />
       </MapContainer>
