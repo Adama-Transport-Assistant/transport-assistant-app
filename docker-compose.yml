@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /app
+    command: npm run start:dev
+    ports:
+      - '${PORT:-4000}:4000'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-transport-assistant}?schema=public
+      - PORT=${PORT:-4000}
+      - NODE_ENV=${NODE_ENV:-development}
+
+  db:
+    image: postgis/postgis:15-3.4
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    environment:
+      - POSTGRES_USER=${DB_USER:-user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=${DB_NAME:-transport-assistant}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker/postgres/init-postgis.sql:/docker-entrypoint-initdb.d/init-postgis.sql
+
+volumes:
+  postgres_data:
+
