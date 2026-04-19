@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation2, Search, Loader2, Bus, Car, ChevronDown, Home, Heart, WifiOff } from 'lucide-react';
 import { locations, type RouteOption } from '../../data/mockData';
 import MapView from '../MapView';
+import adamahero from '../../assets/adama-hero.png';
 
 // Bajaj icon SVG component
 function BajajIcon({ size = 18 }: { size?: number }) {
@@ -48,6 +49,7 @@ export default function HomeScreen({
 
   // Geolocation on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocationStatus('loading');
     if (!navigator.geolocation) {
       setLocationStatus('error');
@@ -126,17 +128,18 @@ export default function HomeScreen({
   return (
     <div className="flex flex-col md:flex-row h-full bg-gray-50 screen-enter">
       {/* ---- LEFT COLUMN / MAIN CONTENT ---- */}
-      <div className="flex flex-col h-full md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:overflow-y-auto">
+      <div className="flex flex-col h-full md:w-105 lg:w-120 md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:overflow-y-auto">
         {/* Hero Section */}
-        <div className="relative bg-gradient-to-br from-green-800 via-green-700 to-green-900 text-white px-5 pt-10 pb-20 md:pt-8 md:pb-16 md:m-4 md:rounded-2xl shrink-0">
-          <div className="absolute inset-0 opacity-10 md:rounded-2xl" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}></div>
+        <div
+          className="relative text-white px-5 pt-10 pb-20 md:pt-8 md:pb-16 md:m-4 md:rounded-2xl shrink-0 overflow-hidden bg-cover bg-center"
+          style={{ backgroundImage: `url(${adamahero})` }}
+        >
+          <div className="absolute inset-0 md:rounded-2xl bg-linear-to-br from-black/65 via-emerald-900/55 to-black/45"></div>
           <div className="relative">
             <h1 className="text-2xl md:text-3xl font-bold leading-tight">Navigate Ethiopian Cities</h1>
             <div className="flex items-center gap-2 mt-1">
               <div className="w-8 h-px bg-white/40"></div>
-              <p className="text-green-200 text-sm font-medium">Like a Local</p>
+              <p className="text-emerald-100 text-sm font-medium">Like a Local</p>
               <div className="w-8 h-px bg-white/40"></div>
             </div>
           </div>
@@ -250,7 +253,7 @@ export default function HomeScreen({
 
         {/* Map Preview — MOBILE ONLY (below search card) */}
         <div className="px-4 mt-4 flex-1 min-h-0 pb-2 md:hidden">
-          <div className="rounded-2xl overflow-hidden shadow-md h-full min-h-[200px]">
+          <div className="rounded-2xl overflow-hidden shadow-md h-full min-h-50">
             <MapView
               userLocation={userLocation}
               originLabel={origin}
