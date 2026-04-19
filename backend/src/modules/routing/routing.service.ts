@@ -1,212 +1,154 @@
-import { HttpService } from '@nestjs/axios';
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
 import { PlanRouteDto, RoutingPreference } from './dto/plan-route.dto';
+import { RouteItinerary } from './interfaces/route-itinerary.interface';
 
-type OtpLeg = {
-	mode: string;
-	routeShortName?: string;
-	routeLongName?: string;
-	from: { name: string };
-	to: { name: string };
-	startTime: number;
-	endTime: number;
-};
-
-type OtpItinerary = {
-	duration: number;
-	walkDistance: number;
-	waitingTime?: number;
-	transfers?: number;
-	legs: OtpLeg[];
-};
-
+/**
+ * RoutingService — MVP mock implementation.
+ *
+ * Returns 3–4 realistic route options for Adama city using local landmarks.
+ * No external OTP or GTFS dependency; data is fully self-contained.
+ * Replace mock data with real routing logic when live data becomes available.
+ */
 @Injectable()
 export class RoutingService {
-	private readonly otpBaseUrl: string;
+  private readonly logger = new Logger(RoutingService.name);
 
-	constructor(
-		private readonly httpService: HttpService,
-		private readonly configService: ConfigService,
-		private readonly prisma: PrismaService,
-	) {
-		this.otpBaseUrl = this.configService.get<string>('app.otpBaseUrl', {
-			infer: true,
-		}) as string;
-	}
+  planRoute(query: PlanRouteDto): {
+    request: object;
+    itineraries: RouteItinerary[];
+  } {
+    const preference = query.preference ?? RoutingPreference.FASTEST;
 
-	async planRoute(query: PlanRouteDto) {
-		const date = query.dateTime ? new Date(query.dateTime) : new Date();
-		const preference = query.preference ?? RoutingPreference.FASTEST;
-		const otpParams = this.buildOtpParams(query, preference, date);
+    this.logger.log(
+      `Planning route from [${query.fromLat},${query.fromLon}] ` +
+        `to [${query.toLat},${query.toLon}] | preference: ${preference}`,
+    );
 
-		let data: { plan?: { itineraries?: OtpItinerary[] } };
-		try {
-			const response = await firstValueFrom(
-				this.httpService.get(`${this.otpBaseUrl}/plan`, { params: otpParams }),
-			);
-			data = response.data as { plan?: { itineraries?: OtpItinerary[] } };
-		} catch (error) {
-			throw new ServiceUnavailableException('Routing engine is currently unavailable.');
-		}
+    const itineraries = this.sortByPreference(this.buildMockRoutes(), preference);
 
-		const itineraries = data.plan?.itineraries ?? [];
-		const enrichedItineraries = await Promise.all(
-			itineraries.map((itinerary) => this.enrichItinerary(itinerary)),
-		);
+    return {
+      request: {
+        from: { lat: query.fromLat, lon: query.fromLon },
+        to: { lat: query.toLat, lon: query.toLon },
+        preference,
+        dateTime: query.dateTime ?? new Date().toISOString(),
+      },
+      itineraries,
+    };
+  }
 
-		return {
-			request: {
-				from: { lat: query.fromLat, lon: query.fromLon },
-				to: { lat: query.toLat, lon: query.toLon },
-				preference,
-				dateTime: date.toISOString(),
-			},
-			totalItineraries: enrichedItineraries.length,
-			itineraries: enrichedItineraries,
-		};
-	}
+  // ─── Private helpers ──────────────────────────────────────────────────────
 
-	private buildOtpParams(
-		query: PlanRouteDto,
-		preference: RoutingPreference,
-		date: Date,
-	): Record<string, string | number> {
-		const maxWalkDistance = this.configService.get<number>('app.maxWalkingDistanceMeters', {
-			infer: true,
-		}) as number;
+  /**
+   * Builds the full set of mock route options for Adama city.
+   * Each option uses real Adama landmarks and realistic ETB fares.
+   */
+  private buildMockRoutes(): RouteItinerary[] {
+    return [
+      // ── Option 1: Minibus via Total Station ──────────────────────────────
+      {
+        id: 'route-1',
+        label: 'Minibus via Total Station',
+        mode: 'minibus',
+        totalTime: 30,
+        totalCost: 15,
+        walkingDistance: 450,
+        numberOfTransfers: 1,
+        stepByStepInstructions: [
+          'Walk ~250m south to the Adama University main gate bus stop.',
+          'Board Minibus Route 5 towards Piassa — fare: 8 ETB.',
+          'Ride ~12 min and alight at Total Station (near the fuel station on the main road).',
+          'Transfer to a short Minibus heading to the market area — fare: 7 ETB.',
+          'Alight at Adama Merkato. Walk ~200m east to your destination.',
+        ],
+        smartSuggestion:
+          'Minibuses fill up fast between 7–9 AM near the university. Board early or wait for the next one.',
+      },
 
-		const optimize =
-			preference === RoutingPreference.CHEAPEST
-				? 'TRANSFERS'
-				: preference === RoutingPreference.LEAST_WALKING
-					? 'TRIANGLE'
-					: 'QUICK';
+      // ── Option 2: Direct Bajaj (fastest, pricier) ─────────────────────────
+      {
+        id: 'route-2',
+        label: 'Direct Bajaj',
+        mode: 'bajaj',
+        totalTime: 20,
+        totalCost: 50,
+        walkingDistance: 150,
+        numberOfTransfers: 0,
+        stepByStepInstructions: [
+          'Walk ~100m to the bajaj stand at the Adama University roundabout.',
+          'Negotiate a direct bajaj to Adama Merkato — typical fare: 40–55 ETB.',
+          'Ride takes ~15 min via the Piassa shortcut road.',
+          'Alight directly in front of the market entrance. Walk ~50m to your destination.',
+        ],
+        smartSuggestion:
+          'Bajajs are the fastest door-to-door option in Adama. Always agree on the price before boarding.',
+      },
 
-		const params: Record<string, string | number> = {
-			fromPlace: `${query.fromLat},${query.fromLon}`,
-			toPlace: `${query.toLat},${query.toLon}`,
-			date: date.toISOString().slice(0, 10),
-			time: date.toISOString().slice(11, 19),
-			mode: 'WALK,TRANSIT',
-			maxWalkDistance,
-			numItineraries: query.numItineraries ?? 3,
-			locale: query.locale ?? 'en',
-			optimize,
-		};
+      // ── Option 3: Bus 101 — cheapest, more transfers ──────────────────────
+      {
+        id: 'route-3',
+        label: 'Bus Route 101 (Cheapest)',
+        mode: 'bus',
+        totalTime: 48,
+        totalCost: 10,
+        walkingDistance: 1100,
+        numberOfTransfers: 2,
+        stepByStepInstructions: [
+          'Walk ~600m north to the Adama Bus Station (main inter-city terminal).',
+          'Board Bus Route 101 towards the town center — fare: 5 ETB.',
+          'Ride ~18 min and alight at Piassa junction (the busy roundabout near the commercial bank).',
+          'Walk ~200m west and board Minibus Route 2 towards the market — fare: 5 ETB.',
+          'Alight at Adama Merkato. Walk ~300m to your destination.',
+        ],
+        smartSuggestion:
+          'This is the cheapest option but involves more walking. Good choice if you have time and want to save money.',
+      },
 
-		if (preference === RoutingPreference.LEAST_WALKING) {
-			params.triangleSafetyFactor = 0.2;
-			params.triangleSlopeFactor = 0.1;
-			params.triangleTimeFactor = 0.7;
-		}
+      // ── Option 4: Taxi (shared) — balanced comfort/cost ───────────────────
+      {
+        id: 'route-4',
+        label: 'Shared Taxi via Piassa',
+        mode: 'taxi',
+        totalTime: 25,
+        totalCost: 30,
+        walkingDistance: 300,
+        numberOfTransfers: 0,
+        stepByStepInstructions: [
+          'Walk ~200m to the shared taxi pick-up point near Adama University gate (look for white Lada taxis).',
+          'Board a shared taxi heading to Piassa — fare: 15–20 ETB.',
+          'Ride ~10 min; the taxi passes through the Bole road before reaching Piassa.',
+          'Alight at Piassa junction. Walk ~100m south to the market entrance.',
+          'Walk ~100m further to your final destination.',
+        ],
+        smartSuggestion:
+          'Traffic is usually heavy near Piassa after 5 PM. This route avoids the main bus station bottleneck.',
+      },
+    ];
+  }
 
-		return params;
-	}
+  /**
+   * Sorts itineraries by user preference and returns the top results.
+   */
+  private sortByPreference(
+    routes: RouteItinerary[],
+    preference: RoutingPreference,
+  ): RouteItinerary[] {
+    const sorted = [...routes];
 
-	private async enrichItinerary(itinerary: OtpItinerary) {
-		const costEstimateEtb = this.calculateEtbFare(itinerary.legs);
-		const waitingTimeMinutes = Math.round((itinerary.waitingTime ?? 0) / 60);
+    switch (preference) {
+      case RoutingPreference.CHEAPEST:
+        sorted.sort((a, b) => a.totalCost - b.totalCost);
+        break;
+      case RoutingPreference.LEAST_WALKING:
+        sorted.sort((a, b) => a.walkingDistance - b.walkingDistance);
+        break;
+      case RoutingPreference.FASTEST:
+      default:
+        sorted.sort((a, b) => a.totalTime - b.totalTime);
+        break;
+    }
 
-		const withLandmarks = itinerary.legs.map((leg) => ({
-			...leg,
-			from: { name: this.localizeLandmark(leg.from.name) },
-			to: { name: this.localizeLandmark(leg.to.name) },
-		}));
-
-		const smartSuggestions = await this.generateSmartSuggestions(
-			waitingTimeMinutes,
-			itinerary.walkDistance,
-		);
-
-		return {
-			...itinerary,
-			waitingTimeMinutes,
-			costEstimateEtb,
-			legs: withLandmarks,
-			smartSuggestions,
-		};
-	}
-
-	private calculateEtbFare(legs: OtpLeg[]): number {
-		const baseFareByMode: Record<string, number> = {
-			WALK: 0,
-			BUS: 12,
-			TRAM: 10,
-			RAIL: 10,
-			SUBWAY: 10,
-			MINIBUS: 15,
-			CAR: 80,
-			TAXI: 120,
-		};
-
-		const total = legs.reduce((sum, leg) => {
-			const modeKey = leg.mode.toUpperCase();
-			const base = baseFareByMode[modeKey] ?? 14;
-			const durationMinutes = Math.max(1, Math.round((leg.endTime - leg.startTime) / 60000));
-
-			const variableCost = modeKey === 'WALK' ? 0 : Math.ceil(durationMinutes / 20) * 2;
-			return sum + base + variableCost;
-		}, 0);
-
-		return Math.round(total * 100) / 100;
-	}
-
-	private localizeLandmark(stopName: string): string {
-		const map: Record<string, string> = {
-			'Mexico': 'Mexico Square',
-			'Stadium': 'Addis Ababa Stadium',
-			'Piassa': 'Piassa (Arada Center)',
-			'Megenagna': 'Megenagna Junction',
-			'Ayat': 'Ayat Roundabout',
-			'Bole': 'Bole Medhanialem Area',
-		};
-
-		for (const [keyword, localLandmark] of Object.entries(map)) {
-			if (stopName.toLowerCase().includes(keyword.toLowerCase())) {
-				return `${stopName} near ${localLandmark}`;
-			}
-		}
-
-		return stopName;
-	}
-
-	private async generateSmartSuggestions(
-		waitingTimeMinutes: number,
-		walkDistance: number,
-	): Promise<string[]> {
-		const suggestions: string[] = [];
-
-		if (waitingTimeMinutes >= 15) {
-			suggestions.push(
-				'High waiting time detected. Consider nearby shared taxi/bajaj for first-mile connection.',
-			);
-		}
-
-		if (walkDistance > 1200) {
-			suggestions.push('Walking segment is long. Consider boarding from a closer feeder stop.');
-		}
-
-		const nearbyTaxiStands = await this.prisma.taxiStandPOI.findMany({
-			take: 2,
-			orderBy: { updatedAt: 'desc' },
-			select: { name: true, areaName: true },
-		});
-
-		if (nearbyTaxiStands.length > 0) {
-			const formatted = nearbyTaxiStands
-				.map((stand) => `${stand.name} (${stand.areaName})`)
-				.join(', ');
-			suggestions.push(`Nearby taxi stands to check: ${formatted}.`);
-		}
-
-		if (suggestions.length === 0) {
-			suggestions.push('Transit conditions look good for this plan.');
-		}
-
-		return suggestions;
-	}
+    return sorted;
+  }
 }
