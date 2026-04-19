@@ -16,6 +16,22 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Green origin marker
+const OriginIcon = L.divIcon({
+  html: `<div style="width:16px;height:16px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+  className: '',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+// Red destination marker
+const DestinationIcon = L.divIcon({
+  html: `<div style="width:20px;height:20px;background:#dc2626;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+  className: '',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
 // Component to handle auto-fitting bounds based on current route or user location
 function MapBoundsFit({ path, userLocation }: { path?: [number, number][], userLocation?: [number, number] | null }) {
   const map = useMap();
@@ -26,12 +42,24 @@ function MapBoundsFit({ path, userLocation }: { path?: [number, number][], userL
       if (userLocation) allPoints.push(userLocation);
       
       const bounds = L.latLngBounds(allPoints);
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17, animate: true, duration: 0.5 });
     } else if (userLocation) {
       // If only user location is known, center and zoom in
-      map.setView(userLocation, 16);
+      map.flyTo(userLocation, 16, { animate: true, duration: 1 });
     }
   }, [path, userLocation, map]);
+  return null;
+}
+
+// Invalidate map size after container visibility changes
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [map]);
   return null;
 }
 
@@ -39,9 +67,19 @@ interface MapViewProps {
   selectedRoute?: RouteOption | null;
   userLocation?: [number, number] | null;
   originLabel?: string;
+  height?: string;
+  interactive?: boolean;
+  showControls?: boolean;
 }
 
-export default function MapView({ selectedRoute, userLocation, originLabel }: MapViewProps) {
+export default function MapView({ 
+  selectedRoute, 
+  userLocation, 
+  originLabel,
+  height = '100%',
+  interactive = true,
+  showControls = true,
+}: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center if no user location and no route
   const adamaCenter: [number, number] = [8.5400, 39.2700];
@@ -49,22 +87,28 @@ export default function MapView({ selectedRoute, userLocation, originLabel }: Ma
   const centerCoord = userLocation || (selectedRoute && selectedRoute.path[0]) || adamaCenter;
 
   return (
-    <div className="h-full w-full relative flex-1 z-10 rounded-xl overflow-hidden">
-      <div className="absolute top-4 right-4 z-[400]">
-        <button
-          onClick={() => setMapMode(prev => prev === 'street' ? 'satellite' : 'street')}
-          className="bg-white text-gray-800 p-2 rounded-lg shadow-lg flex items-center gap-2 hover:bg-gray-100 transition-colors font-medium text-sm"
-        >
-          <Layers size={18} />
-          {mapMode === 'street' ? 'Satellite View' : 'Street View'}
-        </button>
-      </div>
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height }}>
+      {showControls && (
+        <div className="absolute top-3 right-3 z-[400]">
+          <button
+            onClick={() => setMapMode(prev => prev === 'street' ? 'satellite' : 'street')}
+            className="bg-white text-gray-700 p-2 rounded-xl shadow-md flex items-center gap-1.5 hover:bg-gray-50 transition-all duration-200 font-medium text-xs border border-gray-200"
+          >
+            <Layers size={14} />
+            {mapMode === 'street' ? 'Satellite' : 'Street'}
+          </button>
+        </div>
+      )}
 
       <MapContainer
         center={centerCoord}
-        zoom={16}
-        maxZoom={20}
-        scrollWheelZoom={true}
+        zoom={15}
+        maxZoom={19}
+        scrollWheelZoom={interactive}
+        dragging={interactive}
+        touchZoom={interactive}
+        doubleClickZoom={interactive}
+        zoomControl={interactive}
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
@@ -73,32 +117,32 @@ export default function MapView({ selectedRoute, userLocation, originLabel }: Ma
             key="street"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-            maxZoom={20}
+            maxZoom={19}
           />
         ) : (
           <TileLayer
             key="satellite"
             attribution='Tiles &copy; Esri'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={20}
+            maxZoom={19}
           />
         )}
 
         {/* Dynamic Exact Origin Marker: Prioritize Real GPS */}
         {userLocation ? (
-          <Marker position={userLocation}>
+          <Marker position={userLocation} icon={OriginIcon}>
             <Popup>
-              <div className="text-gray-800">
-                <span className="font-bold">Your Location</span>
-                <p className="text-xs">{originLabel}</p>
+              <div className="text-gray-800 text-sm">
+                <span className="font-semibold">📍 Your Location</span>
+                {originLabel && <p className="text-xs text-gray-500 mt-0.5">{originLabel}</p>}
               </div>
             </Popup>
           </Marker>
         ) : selectedRoute && selectedRoute.path.length > 0 ? (
-          <Marker position={selectedRoute.path[0]}>
+          <Marker position={selectedRoute.path[0]} icon={OriginIcon}>
             <Popup>
-              <div className="text-gray-800">
-                <span className="font-bold">Origin: {selectedRoute.origin}</span>
+              <div className="text-gray-800 text-sm">
+                <span className="font-semibold">📍 {selectedRoute.origin}</span>
               </div>
             </Popup>
           </Marker>
@@ -106,10 +150,10 @@ export default function MapView({ selectedRoute, userLocation, originLabel }: Ma
 
         {/* Current Destination Marker */}
         {selectedRoute && selectedRoute.path.length > 1 && (
-          <Marker position={selectedRoute.path[selectedRoute.path.length - 1]}>
+          <Marker position={selectedRoute.path[selectedRoute.path.length - 1]} icon={DestinationIcon}>
             <Popup>
-              <div className="text-gray-800">
-                <span className="font-bold">Destination: {selectedRoute.destination}</span>
+              <div className="text-gray-800 text-sm">
+                <span className="font-semibold">🏁 {selectedRoute.destination}</span>
               </div>
             </Popup>
           </Marker>
@@ -119,9 +163,9 @@ export default function MapView({ selectedRoute, userLocation, originLabel }: Ma
         {!userLocation && !selectedRoute && (
           <Marker position={adamaCenter}>
             <Popup>
-              <div className="text-gray-800">
-                <span className="font-bold">Adama Center</span>
-                <p>Welcome to Adama Smart Transport!</p>
+              <div className="text-gray-800 text-sm">
+                <span className="font-semibold">Adama City</span>
+                <p className="text-xs text-gray-500">Welcome to Smart Transport!</p>
               </div>
             </Popup>
           </Marker>
@@ -131,15 +175,18 @@ export default function MapView({ selectedRoute, userLocation, originLabel }: Ma
         {selectedRoute && (
           <Polyline 
             positions={userLocation ? [userLocation, ...selectedRoute.path] : selectedRoute.path} 
-            color="#22c55e" 
-            weight={5} 
-            opacity={0.8} 
+            color="#2563eb" 
+            weight={5}
+            opacity={0.85}
+            dashArray="0"
+            lineCap="round"
+            lineJoin="round"
           />
         )}
         
         <MapBoundsFit path={selectedRoute?.path} userLocation={userLocation} />
+        <MapResizer />
       </MapContainer>
     </div>
   );
 }
-
