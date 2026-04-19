@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Navigation2, ChevronDown } from 'lucide-react';
 import { locations } from '../data/mockData';
 
@@ -12,7 +12,7 @@ export default function RouteDropdown({ value, onChange }: RouteDropdownProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const filteredLocations = locations.filter(loc => 
+  const filteredLocations = locations.filter(loc =>
     loc.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
