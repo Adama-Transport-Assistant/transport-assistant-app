@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation2, Search, Loader2, Bus, Car, ChevronDown, Home, Heart, WifiOff } from 'lucide-react';
 import { locations, type RouteOption } from '../../data/mockData';
 import MapView from '../MapView';
-import adamaHero from '../../assets/adama-hero.png';
+import adamahero from '../../assets/adama-hero.png';
 
 // Bajaj icon SVG component
 function BajajIcon({ size = 18 }: { size?: number }) {
@@ -132,7 +132,7 @@ export default function HomeScreen({
         {/* Hero Section */}
         <div
           className="relative text-white px-5 pt-10 pb-20 md:pt-8 md:pb-16 md:m-4 md:rounded-2xl shrink-0 overflow-hidden bg-cover bg-center"
-          style={{ backgroundImage: `url(${adamaHero})` }}
+          style={{ backgroundImage: `url(${adamahero})` }}
         >
           <div className="absolute inset-0 md:rounded-2xl bg-linear-to-br from-black/65 via-emerald-900/55 to-black/45"></div>
           <div className="relative">
