@@ -1,32 +1,44 @@
 import { Controller, Get } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HealthCheck, HealthCheckService, HttpHealthIndicator } from '@nestjs/terminus';
+import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Health check endpoints.
+ * GET /api/health       — full check (DB connectivity)
+ * GET /api/health/live  — simple liveness probe (no deps)
+ */
 @Controller('health')
 export class HealthController {
-  constructor(
-    private readonly health: HealthCheckService,
-    private readonly http: HttpHealthIndicator,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  @HealthCheck()
-  check() {
-    const otpBaseUrl = this.configService.get<string>('app.otpBaseUrl', {
-      infer: true,
-    }) as string;
+  async check() {
+    // Lightweight DB probe — verifies Prisma can talk to Postgres
+    let dbStatus: 'ok' | 'error' = 'ok';
+    let dbMessage: string | undefined;
 
-    return this.health.check([
-      () => this.http.pingCheck('otp', `${otpBaseUrl}/actuator/health`),
-    ]);
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch (err: unknown) {
+      dbStatus = 'error';
+      dbMessage = err instanceof Error ? err.message : 'Unknown DB error';
+    }
+
+    const overall = dbStatus === 'ok' ? 'ok' : 'degraded';
+
+    return {
+      status: overall,
+      timestamp: new Date().toISOString(),
+      checks: {
+        database: { status: dbStatus, ...(dbMessage ? { message: dbMessage } : {}) },
+      },
+    };
   }
 
   @Get('live')
   liveness() {
     return {
       status: 'ok',
-      service: 'transport-assistant-backend',
+      service: 'adama-transport-assistant-backend',
       timestamp: new Date().toISOString(),
     };
   }
