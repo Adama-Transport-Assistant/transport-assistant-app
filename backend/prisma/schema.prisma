@@ -1,0 +1,102 @@
+// Adama Smart Public Transport Assistant — Prisma Schema
+// Provider: PostgreSQL + PostGIS (spatial queries)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+/// Transport mode used on a route segment
+enum RouteType {
+  minibus
+  bus
+  bajaj
+  taxi
+}
+
+/// Role-based access control for future auth
+enum UserRole {
+  user
+  admin
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+/// Registered users — kept minimal for MVP; auth can be layered on later
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  role      UserRole  @default(user)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  feedback  RouteFeedback[]
+
+  @@map("users")
+}
+
+/// Physical transport stop or boarding point in Adama
+model Stop {
+  stop_id   String  @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+
+  /// PostGIS geography point — used for spatial proximity queries
+  location  Unsupported("geography(Point, 4326)")?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([location], type: Gist)
+  @@map("stops")
+}
+
+/// A named transport route (e.g. Minibus Route 5, Bus 101)
+model Route {
+  route_id    String    @id @default(cuid())
+  short_name  String
+  type        RouteType
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("routes")
+}
+
+/// Historical arrival/departure data — used for future ETA prediction
+model HistoricalETA {
+  id        String   @id @default(cuid())
+  route_id  String
+  stop_id   String
+  timestamp DateTime
+  /// Delay in minutes (negative = early)
+  delay     Int
+  createdAt DateTime @default(now())
+
+  @@index([route_id, stop_id])
+  @@map("historical_eta")
+}
+
+/// User-submitted feedback on a journey plan
+model RouteFeedback {
+  id        String   @id @default(cuid())
+  route_id  String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  rating    Int      // 1–5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("route_feedback")
+}
