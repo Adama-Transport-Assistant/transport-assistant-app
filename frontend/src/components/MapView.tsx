@@ -7,6 +7,8 @@ import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import type { RouteOption } from '../data/mockData';
+import type { Stop } from '../types/Stop';
+import StopMarkers from './StopMarkers';
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -94,6 +96,8 @@ interface MapViewProps {
   height?: string;
   interactive?: boolean;
   showControls?: boolean;
+  stops?: Stop[];
+  stopsLoading?: boolean;
 }
 
 export default function MapView({
@@ -103,12 +107,14 @@ export default function MapView({
   height = '100%',
   interactive = true,
   showControls = true,
+  stops = [],
+  stopsLoading = false,
 }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
-  // Default center if no user location and no route
-  const adamaCenter: [number, number] = [8.5400, 39.2700];
+  // Default center: Addis Ababa (GTFS data covers this city)
+  const defaultCenter: [number, number] = [9.03, 38.74];
 
-  const centerCoord = userLocation || (selectedRoute && selectedRoute.path[0]) || adamaCenter;
+  const centerCoord = userLocation || (selectedRoute && selectedRoute.path[0]) || defaultCenter;
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height }}>
@@ -126,7 +132,7 @@ export default function MapView({
 
       <MapContainer
         center={centerCoord}
-        zoom={15}
+        zoom={13}
         maxZoom={19}
         scrollWheelZoom={interactive}
         dragging={interactive}
@@ -184,16 +190,19 @@ export default function MapView({
         )}
 
         {/* Default Marker if NOTHING is known */}
-        {!userLocation && !selectedRoute && (
-          <Marker position={adamaCenter}>
+        {!userLocation && !selectedRoute && stops.length === 0 && (
+          <Marker position={defaultCenter}>
             <Popup>
               <div className="text-gray-800 text-sm">
-                <span className="font-semibold">Adama City</span>
+                <span className="font-semibold">Addis Ababa</span>
                 <p className="text-xs text-gray-500">Welcome to Smart Transport!</p>
               </div>
             </Popup>
           </Marker>
         )}
+
+        {/* GTFS Bus Stop Markers */}
+        {stops.length > 0 && <StopMarkers stops={stops} />}
 
         {/* Route Polyline connecting Origin strictly to Destination */}
         {selectedRoute && (
