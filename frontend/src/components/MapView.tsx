@@ -108,7 +108,6 @@ export default function MapView({
   interactive = true,
   showControls = true,
   stops = [],
-  stopsLoading = false,
 }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center: Addis Ababa (GTFS data covers this city)
@@ -119,7 +118,7 @@ export default function MapView({
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height }}>
       {showControls && (
-        <div className="absolute top-3 right-3 z-[400]">
+        <div className="absolute top-3 right-3 z-400">
           <button
             onClick={() => setMapMode(prev => prev === 'street' ? 'satellite' : 'street')}
             className="bg-white text-gray-700 p-2 rounded-xl shadow-md flex items-center gap-1.5 hover:bg-gray-50 transition-all duration-200 font-medium text-xs border border-gray-200"
