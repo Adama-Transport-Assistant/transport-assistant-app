@@ -49,7 +49,7 @@ function isValidLatLng(coords: [number, number]): boolean {
 }
 
 // Component to handle auto-fitting bounds based on current route or user location
-function MapBoundsFit({ path, userLocation }: { path?: [number, number][], userLocation?: [number, number] | null }) {
+function MapBoundsFit({ path, userLocation, hasStops }: { path?: [number, number][], userLocation?: [number, number] | null, hasStops?: boolean }) {
   const map = useMap();
   useEffect(() => {
     // Guard: skip if the map's container has zero size (hidden via CSS)
@@ -66,14 +66,16 @@ function MapBoundsFit({ path, userLocation }: { path?: [number, number][], userL
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17, animate: false });
         }
-      } else if (userLocation && isValidLatLng(userLocation)) {
+      } else if (userLocation && isValidLatLng(userLocation) && !hasStops) {
+        // Only auto-pan to user location when stops are NOT displayed,
+        // otherwise the map jumps away from the stops coverage area.
         map.setView(userLocation, 16, { animate: false });
       }
     } catch (e) {
       // Silently ignore Leaflet projection errors (e.g. during resize transitions)
       console.warn('MapBoundsFit: skipped view change', e);
     }
-  }, [path, userLocation, map]);
+  }, [path, userLocation, hasStops, map]);
   return null;
 }
 
@@ -216,7 +218,7 @@ export default function MapView({
           />
         )}
 
-        <MapBoundsFit path={selectedRoute?.path} userLocation={userLocation} />
+        <MapBoundsFit path={selectedRoute?.path} userLocation={userLocation} hasStops={stops.length > 0} />
         <MapResizer />
       </MapContainer>
     </div>
