@@ -9,6 +9,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import type { RouteOption } from '../data/mockData';
 import type { Stop } from '../types/Stop';
 import StopMarkers from './StopMarkers';
+import { getStartAndEndPoints } from '../utils/getStartAndEndPoints';
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -18,20 +19,20 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Green origin marker
+// Green origin marker (large, prominent — clearly distinct from stop markers)
 const OriginIcon = L.divIcon({
-  html: `<div style="width:16px;height:16px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="width:24px;height:24px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 3px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:12px;font-weight:bold;">A</span></div>`,
   className: '',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 });
 
-// Red destination marker
+// Red destination marker (large, prominent — clearly distinct from stop markers)
 const DestinationIcon = L.divIcon({
-  html: `<div style="width:20px;height:20px;background:#dc2626;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="width:24px;height:24px;background:#dc2626;border:3px solid white;border-radius:50%;box-shadow:0 3px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:12px;font-weight:bold;">B</span></div>`,
   className: '',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 });
 
 // Validate that a coordinate pair has real numbers
@@ -102,6 +103,8 @@ interface MapViewProps {
   stopsLoading?: boolean;
   /** GTFS route shape polyline [lat, lon][] — from useRouteShape */
   gtfsRoutePath?: [number, number][] | null;
+  /** Label for the selected GTFS route (e.g. "AB097 — Megenegna Terminal ↔ Legedadi Mission") */
+  gtfsRouteLabel?: string;
 }
 
 export default function MapView({
@@ -113,6 +116,7 @@ export default function MapView({
   showControls = true,
   stops = [],
   gtfsRoutePath = null,
+  gtfsRouteLabel,
 }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center: Addis Ababa (GTFS data covers this city)
@@ -221,6 +225,38 @@ export default function MapView({
             lineJoin="round"
           />
         )}
+
+        {/* GTFS Route Start & End Markers */}
+        {(() => {
+          const endpoints = getStartAndEndPoints(gtfsRoutePath);
+          if (!endpoints) return null;
+          return (
+            <>
+              <Marker position={endpoints.start} icon={OriginIcon} zIndexOffset={1000}>
+                <Popup>
+                  <div className="text-gray-800 text-sm min-w-[140px]">
+                    <span className="font-semibold text-green-700">🟢 Route Start</span>
+                    {gtfsRouteLabel && <p className="text-xs text-gray-500 mt-1">{gtfsRouteLabel}</p>}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {endpoints.start[0].toFixed(5)}, {endpoints.start[1].toFixed(5)}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+              <Marker position={endpoints.end} icon={DestinationIcon} zIndexOffset={1000}>
+                <Popup>
+                  <div className="text-gray-800 text-sm min-w-[140px]">
+                    <span className="font-semibold text-red-700">🔴 Route End</span>
+                    {gtfsRouteLabel && <p className="text-xs text-gray-500 mt-1">{gtfsRouteLabel}</p>}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {endpoints.end[0].toFixed(5)}, {endpoints.end[1].toFixed(5)}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            </>
+          );
+        })()}
 
         {/* Legacy mock route polyline */}
         {selectedRoute && !gtfsRoutePath && (
