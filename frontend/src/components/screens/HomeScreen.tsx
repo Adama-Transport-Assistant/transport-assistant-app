@@ -23,7 +23,10 @@ export default function HomeScreen() {
   const gtfsRoutePath = useRouteShape(selectedRouteId, trips, shapesMap);
 
   // Find selected route metadata for display
-  // const selectedRouteInfo = gtfsRoutes.find((r) => r.route_id === selectedRouteId);
+  const selectedRouteInfo = gtfsRoutes.find((r) => r.route_id === selectedRouteId);
+  const gtfsRouteLabel = selectedRouteInfo
+    ? `${selectedRouteInfo.route_short_name} — ${selectedRouteInfo.route_long_name}`
+    : undefined;
 
   // Overall data loading state
   const isDataLoading = tripsLoading || shapesLoading;
@@ -116,6 +119,7 @@ export default function HomeScreen() {
               showControls={false}
               stops={stops}
               gtfsRoutePath={gtfsRoutePath}
+              gtfsRouteLabel={gtfsRouteLabel}
             />
           </div>
         </div>
@@ -146,6 +150,7 @@ export default function HomeScreen() {
           showControls={true}
           stops={stops}
           gtfsRoutePath={gtfsRoutePath}
+          gtfsRouteLabel={gtfsRouteLabel}
         />
       </div>
     </div>
