@@ -25,8 +25,10 @@ export function useStops(): UseStopsResult {
         setLoading(true);
         setError(null);
 
+        // Fetch from Vite's public directory
         const response = await fetch('/data/stops.txt', {
           signal: controller.signal,
+          headers: { 'Accept': 'text/plain' },
         });
 
         if (!response.ok) {
@@ -34,6 +36,16 @@ export function useStops(): UseStopsResult {
         }
 
         const csvText = await response.text();
+
+        // Guard: Vite's SPA fallback may serve index.html instead of the file.
+        // Detect this by checking if the response starts with an HTML doctype.
+        if (csvText.trimStart().startsWith('<!')) {
+          throw new Error(
+            'stops.txt returned HTML instead of CSV. ' +
+            'Ensure the file exists at public/data/stops.txt and restart the dev server.'
+          );
+        }
+
         const parsed = parseStops(csvText);
 
         if (parsed.length === 0) {
