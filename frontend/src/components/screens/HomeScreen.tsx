@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation2, Search, Loader2, Bus, Car, ChevronDown, Home, Heart, WifiOff } from 'lucide-react';
 import { locations, type RouteOption } from '../../data/mockData';
 import MapView from '../MapView';
+import { useStops } from '../../hooks/useStops';
 import adamahero from '../../assets/adama-hero.png';
 
 // Bajaj icon SVG component
@@ -41,6 +42,7 @@ export default function HomeScreen({
   userLocation,
   onScreenChange,
 }: HomeScreenProps) {
+  const { stops, loading: stopsLoading, error: stopsError } = useStops();
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [activeTransport, setActiveTransport] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -251,6 +253,30 @@ export default function HomeScreen({
           </div>
         </div>
 
+        {/* Stops Loading / Error Indicator */}
+        {stopsLoading && (
+          <div className="px-5 mt-3">
+            <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+              <Loader2 size={14} className="animate-spin text-primary" />
+              Loading stops...
+            </div>
+          </div>
+        )}
+        {stopsError && (
+          <div className="px-5 mt-3">
+            <p className="text-sm text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+              {stopsError}
+            </p>
+          </div>
+        )}
+        {!stopsLoading && !stopsError && stops.length > 0 && (
+          <div className="px-5 mt-3">
+            <p className="text-xs text-gray-400">
+              {stops.length.toLocaleString()} bus stops loaded
+            </p>
+          </div>
+        )}
+
         {/* Map Preview — MOBILE ONLY (below search card) */}
         <div className="px-4 mt-4 flex-1 min-h-0 pb-2 md:hidden">
           <div className="rounded-2xl overflow-hidden shadow-md h-full min-h-50">
@@ -261,6 +287,8 @@ export default function HomeScreen({
               height="100%"
               interactive={true}
               showControls={false}
+              stops={stops}
+              stopsLoading={stopsLoading}
             />
           </div>
         </div>
@@ -291,6 +319,8 @@ export default function HomeScreen({
           height="100%"
           interactive={true}
           showControls={true}
+          stops={stops}
+          stopsLoading={stopsLoading}
         />
       </div>
     </div>
