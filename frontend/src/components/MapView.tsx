@@ -100,6 +100,8 @@ interface MapViewProps {
   showControls?: boolean;
   stops?: Stop[];
   stopsLoading?: boolean;
+  /** GTFS route shape polyline [lat, lon][] — from useRouteShape */
+  gtfsRoutePath?: [number, number][] | null;
 }
 
 export default function MapView({
@@ -110,12 +112,15 @@ export default function MapView({
   interactive = true,
   showControls = true,
   stops = [],
+  gtfsRoutePath = null,
 }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center: Addis Ababa (GTFS data covers this city)
   const defaultCenter: [number, number] = [9.03, 38.74];
 
-  const centerCoord = userLocation || (selectedRoute && selectedRoute.path[0]) || defaultCenter;
+  // Determine active polyline path (GTFS route takes priority)
+  const activePath = gtfsRoutePath ?? selectedRoute?.path ?? null;
+  const centerCoord = (activePath && activePath.length > 0 ? activePath[0] : null) || defaultCenter;
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height }}>
@@ -205,8 +210,20 @@ export default function MapView({
         {/* GTFS Bus Stop Markers */}
         {stops.length > 0 && <StopMarkers stops={stops} />}
 
-        {/* Route Polyline connecting Origin strictly to Destination */}
-        {selectedRoute && (
+        {/* GTFS Route Polyline (from shapes.txt) */}
+        {gtfsRoutePath && gtfsRoutePath.length > 1 && (
+          <Polyline
+            positions={gtfsRoutePath}
+            color="#2563eb"
+            weight={5}
+            opacity={0.9}
+            lineCap="round"
+            lineJoin="round"
+          />
+        )}
+
+        {/* Legacy mock route polyline */}
+        {selectedRoute && !gtfsRoutePath && (
           <Polyline
             positions={userLocation ? [userLocation, ...selectedRoute.path] : selectedRoute.path}
             color="#2563eb"
@@ -218,7 +235,7 @@ export default function MapView({
           />
         )}
 
-        <MapBoundsFit path={selectedRoute?.path} userLocation={userLocation} hasStops={stops.length > 0} />
+        <MapBoundsFit path={activePath ?? undefined} userLocation={userLocation} hasStops={stops.length > 0} />
         <MapResizer />
       </MapContainer>
     </div>
