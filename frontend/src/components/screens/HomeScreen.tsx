@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Loader2, Home, Heart, WifiOff } from 'lucide-react';
 import MapView from '../MapView';
 import RouteSelector from '../RouteSelector';
+import StopAutocomplete from '../StopAutocomplete';
 import { useStops } from '../../hooks/useStops';
 import { useRoutes } from '../../hooks/useRoutes';
 import { useTrips } from '../../hooks/useTrips';
 import { useShapes } from '../../hooks/useShapes';
 import { useRouteShape } from '../../hooks/useRouteShape';
+import type { Stop } from '../../types/Stop';
 import adamahero from '../../assets/adama-hero.png';
 
 export default function HomeScreen() {
@@ -18,6 +20,10 @@ export default function HomeScreen() {
 
   // Route selection state
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+
+  // User origin/destination stop selection
+  const [originStop, setOriginStop] = useState<Stop | null>(null);
+  const [destinationStop, setDestinationStop] = useState<Stop | null>(null);
 
   // Resolve selected route → shape polyline
   const gtfsRoutePath = useRouteShape(selectedRouteId, trips, shapesMap);
@@ -51,10 +57,33 @@ export default function HomeScreen() {
           </div>
         </div>
 
-        {/* Route Selection Card */}
+        {/* Floating Card: Origin / Destination + Route Selector */}
         <div className="px-4 md:px-5 -mt-14 md:-mt-10 relative z-10">
           <div className="floating-card space-y-3">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Select a Bus Route</p>
+            {/* Origin & Destination inputs */}
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Where are you going?</p>
+
+            <StopAutocomplete
+              stops={stops}
+              placeholder="Enter starting location"
+              value={originStop}
+              onChange={setOriginStop}
+              iconColor="text-green-600"
+            />
+
+            <StopAutocomplete
+              stops={stops}
+              placeholder="Enter destination"
+              value={destinationStop}
+              onChange={setDestinationStop}
+              iconColor="text-red-500"
+            />
+
+            {/* Divider */}
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Or select a bus route</p>
+            </div>
+
             <RouteSelector
               routes={gtfsRoutes}
               loading={routesLoading}
@@ -109,7 +138,7 @@ export default function HomeScreen() {
           </div>
         )}
 
-        {/* Map Preview — MOBILE ONLY (below search card) */}
+        {/* Map Preview — MOBILE ONLY */}
         <div className="px-4 mt-4 flex-1 min-h-0 pb-2 md:hidden">
           <div className="rounded-2xl overflow-hidden shadow-md h-full min-h-50">
             <MapView
@@ -120,6 +149,8 @@ export default function HomeScreen() {
               stops={stops}
               gtfsRoutePath={gtfsRoutePath}
               gtfsRouteLabel={gtfsRouteLabel}
+              originStop={originStop}
+              destinationStop={destinationStop}
             />
           </div>
         </div>
@@ -151,6 +182,8 @@ export default function HomeScreen() {
           stops={stops}
           gtfsRoutePath={gtfsRoutePath}
           gtfsRouteLabel={gtfsRouteLabel}
+          originStop={originStop}
+          destinationStop={destinationStop}
         />
       </div>
     </div>

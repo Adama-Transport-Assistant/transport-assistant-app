@@ -49,34 +49,47 @@ function isValidLatLng(coords: [number, number]): boolean {
   );
 }
 
-// Component to handle auto-fitting bounds based on current route or user location
-function MapBoundsFit({ path, userLocation, hasStops }: { path?: [number, number][], userLocation?: [number, number] | null, hasStops?: boolean }) {
+// Component to handle auto-fitting bounds based on route, user stops, or user location
+function MapBoundsFit({ path, userLocation, hasStops, originCoords, destCoords }: {
+  path?: [number, number][],
+  userLocation?: [number, number] | null,
+  hasStops?: boolean,
+  originCoords?: [number, number] | null,
+  destCoords?: [number, number] | null,
+}) {
   const map = useMap();
   useEffect(() => {
-    // Guard: skip if the map's container has zero size (hidden via CSS)
     const size = map.getSize();
     if (!size || size.x === 0 || size.y === 0) return;
 
     try {
       if (path && path.length > 0) {
+        // Fit to route polyline
         const validPoints = path.filter(isValidLatLng);
-        if (userLocation && isValidLatLng(userLocation)) validPoints.push(userLocation);
         if (validPoints.length === 0) return;
-
         const bounds = L.latLngBounds(validPoints);
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17, animate: false });
         }
+      } else if (originCoords && destCoords && isValidLatLng(originCoords) && isValidLatLng(destCoords)) {
+        // Fit to user-selected origin + destination
+        const bounds = L.latLngBounds([originCoords, destCoords]);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true });
+        }
+      } else if (originCoords && isValidLatLng(originCoords)) {
+        // Pan to just origin
+        map.setView(originCoords, 15, { animate: true });
+      } else if (destCoords && isValidLatLng(destCoords)) {
+        // Pan to just destination
+        map.setView(destCoords, 15, { animate: true });
       } else if (userLocation && isValidLatLng(userLocation) && !hasStops) {
-        // Only auto-pan to user location when stops are NOT displayed,
-        // otherwise the map jumps away from the stops coverage area.
         map.setView(userLocation, 16, { animate: false });
       }
     } catch (e) {
-      // Silently ignore Leaflet projection errors (e.g. during resize transitions)
       console.warn('MapBoundsFit: skipped view change', e);
     }
-  }, [path, userLocation, hasStops, map]);
+  }, [path, userLocation, hasStops, originCoords, destCoords, map]);
   return null;
 }
 
@@ -93,7 +106,7 @@ function MapResizer() {
 }
 
 interface MapViewProps {
-  selectedRoute?: RouteOption | null;
+  // selectedRoute?: RouteOption | null;
   userLocation?: [number, number] | null;
   originLabel?: string;
   height?: string;
@@ -103,8 +116,12 @@ interface MapViewProps {
   stopsLoading?: boolean;
   /** GTFS route shape polyline [lat, lon][] — from useRouteShape */
   gtfsRoutePath?: [number, number][] | null;
-  /** Label for the selected GTFS route (e.g. "AB097 — Megenegna Terminal ↔ Legedadi Mission") */
+  /** Label for the selected GTFS route */
   gtfsRouteLabel?: string;
+  /** User-selected origin stop */
+  originStop?: Stop | null;
+  /** User-selected destination stop */
+  destinationStop?: Stop | null;
 }
 
 export default function MapView({
@@ -117,6 +134,8 @@ export default function MapView({
   stops = [],
   gtfsRoutePath = null,
   gtfsRouteLabel,
+  originStop = null,
+  destinationStop = null,
 }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   // Default center: Addis Ababa (GTFS data covers this city)
@@ -124,7 +143,9 @@ export default function MapView({
 
   // Determine active polyline path (GTFS route takes priority)
   const activePath = gtfsRoutePath ?? selectedRoute?.path ?? null;
-  const centerCoord = (activePath && activePath.length > 0 ? activePath[0] : null) || defaultCenter;
+  const originCoords: [number, number] | null = originStop ? [originStop.stop_lat, originStop.stop_lon] : null;
+  const destCoords: [number, number] | null = destinationStop ? [destinationStop.stop_lat, destinationStop.stop_lon] : null;
+  const centerCoord = (activePath && activePath.length > 0 ? activePath[0] : null) || originCoords || defaultCenter;
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height }}>
@@ -157,14 +178,14 @@ export default function MapView({
             key="street"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-            maxZoom={19}
+            maxZoom={20}
           />
         ) : (
           <TileLayer
             key="satellite"
             attribution='Tiles &copy; Esri'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={19}
+            maxZoom={20}
           />
         )}
 
@@ -271,7 +292,37 @@ export default function MapView({
           />
         )}
 
-        <MapBoundsFit path={activePath ?? undefined} userLocation={userLocation} hasStops={stops.length > 0} />
+        {/* User-selected Origin Marker */}
+        {originStop && (
+          <Marker position={[originStop.stop_lat, originStop.stop_lon]} icon={OriginIcon} zIndexOffset={1100}>
+            <Popup>
+              <div className="text-gray-800 text-sm min-w-[140px]">
+                <span className="font-semibold text-green-700">📍 Origin</span>
+                <p className="text-xs text-gray-600 mt-0.5">{originStop.stop_name}</p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* User-selected Destination Marker */}
+        {destinationStop && (
+          <Marker position={[destinationStop.stop_lat, destinationStop.stop_lon]} icon={DestinationIcon} zIndexOffset={1100}>
+            <Popup>
+              <div className="text-gray-800 text-sm min-w-[140px]">
+                <span className="font-semibold text-red-700">🏁 Destination</span>
+                <p className="text-xs text-gray-600 mt-0.5">{destinationStop.stop_name}</p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        <MapBoundsFit
+          path={activePath ?? undefined}
+          userLocation={userLocation}
+          hasStops={stops.length > 0}
+          originCoords={originCoords}
+          destCoords={destCoords}
+        />
         <MapResizer />
       </MapContainer>
     </div>
