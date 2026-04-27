@@ -63,11 +63,13 @@ export default function HomeScreen() {
 
   const handleOriginChange = (stop: Stop | null) => {
     setOriginStop(stop);
+    setSelectedRoute(null);
     setDirectRouteError(null);
   };
 
   const handleDestinationChange = (stop: Stop | null) => {
     setDestinationStop(stop);
+    setSelectedRoute(null);
     setDirectRouteError(null);
   };
 
@@ -83,8 +85,12 @@ export default function HomeScreen() {
     const matchedRoute = findDirectGtfsRoute({
       originStopId: originStop.stop_id,
       destinationStopId: destinationStop.stop_id,
+      originStopName: originStop.stop_name,
+      destinationStopName: destinationStop.stop_name,
       stopTimes,
       trips,
+      routes: gtfsRoutes,
+      stops,
       shapesMap,
     });
 
