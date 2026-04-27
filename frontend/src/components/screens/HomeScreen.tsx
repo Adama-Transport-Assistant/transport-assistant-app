@@ -15,6 +15,12 @@ import {
 } from '../../utils/findDirectGtfsRoute';
 import adamahero from '../../assets/adama-hero.png';
 
+type RouteInfo = {
+  name: string;
+  totalStops: number;
+  duration: number;
+};
+
 export default function HomeScreen() {
   // GTFS data hooks
   const { stops, loading: stopsLoading, error: stopsError } = useStops();
@@ -26,6 +32,8 @@ export default function HomeScreen() {
   // Route selection state (required in Step 5)
   const [selectedRoute, setSelectedRoute] = useState<SelectedGtfsRoute | null>(null);
   const [directRouteError, setDirectRouteError] = useState<string | null>(null);
+  const [showStops, setShowStops] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
 
   // User origin/destination stop selection
   const [originStop, setOriginStop] = useState<Stop | null>(null);
@@ -38,7 +46,11 @@ export default function HomeScreen() {
     const map = new Map<string, SelectedGtfsRoute>();
     for (const trip of trips) {
       if (!map.has(trip.route_id)) {
-        map.set(trip.route_id, { route_id: trip.route_id, shape_id: trip.shape_id });
+        map.set(trip.route_id, {
+          trip_id: trip.trip_id,
+          route_id: trip.route_id,
+          shape_id: trip.shape_id,
+        });
       }
     }
     return map;
@@ -49,6 +61,24 @@ export default function HomeScreen() {
     if (!selectedRoute) return null;
     return shapesMap.get(selectedRoute.shape_id) ?? null;
   }, [selectedRoute, shapesMap]);
+
+  // Stops to display on map: hidden by default, shown only after successful "Find Route"
+  // and filtered to the currently selected trip.
+  const routeStopIds = useMemo(() => {
+    if (!showStops || !selectedRoute) return new Set<string>();
+    const ids = new Set<string>();
+    for (const stopTime of stopTimes) {
+      if (stopTime.trip_id === selectedRoute.trip_id) {
+        ids.add(stopTime.stop_id);
+      }
+    }
+    return ids;
+  }, [showStops, selectedRoute, stopTimes]);
+
+  const visibleStops = useMemo(() => {
+    if (!showStops || !selectedRoute || routeStopIds.size === 0) return [];
+    return stops.filter((stop) => routeStopIds.has(stop.stop_id));
+  }, [showStops, selectedRoute, routeStopIds, stops]);
 
   // Find selected route metadata for display
   const selectedRouteInfo = gtfsRoutes.find((r) => r.route_id === selectedRouteId);
@@ -64,18 +94,24 @@ export default function HomeScreen() {
   const handleOriginChange = (stop: Stop | null) => {
     setOriginStop(stop);
     setSelectedRoute(null);
+    setShowStops(false);
+    setRouteInfo(null);
     setDirectRouteError(null);
   };
 
   const handleDestinationChange = (stop: Stop | null) => {
     setDestinationStop(stop);
     setSelectedRoute(null);
+    setShowStops(false);
+    setRouteInfo(null);
     setDirectRouteError(null);
   };
 
   const handleSelectRoute = (routeId: string) => {
     const manualRoute = routeShapeByRouteId.get(routeId) ?? null;
     setSelectedRoute(manualRoute);
+    setShowStops(false);
+    setRouteInfo(null);
     setDirectRouteError(null);
   };
 
@@ -96,11 +132,33 @@ export default function HomeScreen() {
 
     if (!matchedRoute) {
       setSelectedRoute(null);
+      setShowStops(false);
+      setRouteInfo(null);
       setDirectRouteError('No direct route found');
       return;
     }
 
+    const matchedRouteMeta = gtfsRoutes.find((route) => route.route_id === matchedRoute.route_id);
+    const routeName = matchedRouteMeta
+      ? `${matchedRouteMeta.route_short_name} - ${matchedRouteMeta.route_long_name}`
+      : matchedRoute.route_id;
+
+    const matchedStopIds = new Set<string>();
+    for (const stopTime of stopTimes) {
+      if (stopTime.trip_id === matchedRoute.trip_id) {
+        matchedStopIds.add(stopTime.stop_id);
+      }
+    }
+    const totalStops = stops.filter((stop) => matchedStopIds.has(stop.stop_id)).length;
+    const duration = Math.round(totalStops * 1.5);
+
     setSelectedRoute(matchedRoute);
+    setShowStops(true);
+    setRouteInfo({
+      name: routeName,
+      totalStops,
+      duration,
+    });
     setDirectRouteError(null);
   };
 
@@ -159,15 +217,26 @@ export default function HomeScreen() {
               Find Route
             </button>
 
+            {routeInfo && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 space-y-1.5">
+                <p className="text-sm font-semibold text-primary leading-snug break-words">
+                  {routeInfo.name}
+                </p>
+                <p className="text-xs text-gray-700">
+                  Transport: <span className="font-medium">Bus</span>
+                </p>
+                <p className="text-xs text-gray-700">
+                  Stops: <span className="font-medium">{routeInfo.totalStops}</span>
+                </p>
+                <p className="text-xs text-gray-700">
+                  Duration: <span className="font-medium">~{routeInfo.duration} mins</span>
+                </p>
+              </div>
+            )}
+
             {directRouteError && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl border border-red-200">
                 {directRouteError}
-              </p>
-            )}
-
-            {selectedRouteInfo && (
-              <p className="text-xs text-primary bg-primary/5 px-3 py-2 rounded-lg border border-primary/15">
-                Active route: {selectedRouteInfo.route_short_name} - {selectedRouteInfo.route_long_name}
               </p>
             )}
 
@@ -247,7 +316,7 @@ export default function HomeScreen() {
               height="100%"
               interactive={true}
               showControls={false}
-              stops={stops}
+              stops={visibleStops}
               gtfsRoutePath={gtfsRoutePath}
               gtfsRouteLabel={gtfsRouteLabel}
               originStop={originStop}
@@ -280,7 +349,7 @@ export default function HomeScreen() {
           height="100%"
           interactive={true}
           showControls={true}
-          stops={stops}
+          stops={visibleStops}
           gtfsRoutePath={gtfsRoutePath}
           gtfsRouteLabel={gtfsRouteLabel}
           originStop={originStop}
