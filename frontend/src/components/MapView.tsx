@@ -250,7 +250,7 @@ export default function MapView({
           </Marker>
         )}
 
-        {!userLocation && !selectedRoute && stops.length === 0 && (
+        {!userLocation && !selectedRoute && !gtfsRoutePath && !hasTransferPath && stops.length === 0 && (
           <Marker position={defaultCenter}>
             <Popup>
               <div className="text-gray-800 text-sm">
