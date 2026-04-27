@@ -10,7 +10,7 @@ interface UseTripsResult {
 
 /**
  * Fetches and parses GTFS trips from /data/trips.txt.
- * Only extracts route_id and shape_id.
+ * Extracts trip_id, route_id, and shape_id.
  */
 export function useTrips(): UseTripsResult {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -35,8 +35,9 @@ export function useTrips(): UseTripsResult {
 
         const rows = parseCsv(text);
         const parsed: Trip[] = rows
-          .filter((r) => r.route_id && r.shape_id)
+          .filter((r) => r.trip_id && r.route_id && r.shape_id)
           .map((r) => ({
+            trip_id: r.trip_id,
             route_id: r.route_id,
             shape_id: r.shape_id,
           }));

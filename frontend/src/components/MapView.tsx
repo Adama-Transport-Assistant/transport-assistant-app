@@ -64,8 +64,10 @@ function MapBoundsFit({ path, userLocation, hasStops, originCoords, destCoords }
 
     try {
       if (path && path.length > 0) {
-        // Fit to route polyline
+        // Fit to route polyline plus selected markers
         const validPoints = path.filter(isValidLatLng);
+        if (originCoords && isValidLatLng(originCoords)) validPoints.push(originCoords);
+        if (destCoords && isValidLatLng(destCoords)) validPoints.push(destCoords);
         if (validPoints.length === 0) return;
         const bounds = L.latLngBounds(validPoints);
         if (bounds.isValid()) {
@@ -255,7 +257,7 @@ export default function MapView({
             <>
               <Marker position={endpoints.start} icon={OriginIcon} zIndexOffset={1000}>
                 <Popup>
-                  <div className="text-gray-800 text-sm min-w-[140px]">
+                  <div className="text-gray-800 text-sm min-w-35">
                     <span className="font-semibold text-green-700">🟢 Route Start</span>
                     {gtfsRouteLabel && <p className="text-xs text-gray-500 mt-1">{gtfsRouteLabel}</p>}
                     <p className="text-[10px] text-gray-400 mt-0.5">
@@ -266,7 +268,7 @@ export default function MapView({
               </Marker>
               <Marker position={endpoints.end} icon={DestinationIcon} zIndexOffset={1000}>
                 <Popup>
-                  <div className="text-gray-800 text-sm min-w-[140px]">
+                  <div className="text-gray-800 text-sm min-w-35">
                     <span className="font-semibold text-red-700">🔴 Route End</span>
                     {gtfsRouteLabel && <p className="text-xs text-gray-500 mt-1">{gtfsRouteLabel}</p>}
                     <p className="text-[10px] text-gray-400 mt-0.5">
@@ -296,7 +298,7 @@ export default function MapView({
         {originStop && (
           <Marker position={[originStop.stop_lat, originStop.stop_lon]} icon={OriginIcon} zIndexOffset={1100}>
             <Popup>
-              <div className="text-gray-800 text-sm min-w-[140px]">
+              <div className="text-gray-800 text-sm min-w-35">
                 <span className="font-semibold text-green-700">📍 Origin</span>
                 <p className="text-xs text-gray-600 mt-0.5">{originStop.stop_name}</p>
               </div>
@@ -308,7 +310,7 @@ export default function MapView({
         {destinationStop && (
           <Marker position={[destinationStop.stop_lat, destinationStop.stop_lon]} icon={DestinationIcon} zIndexOffset={1100}>
             <Popup>
-              <div className="text-gray-800 text-sm min-w-[140px]">
+              <div className="text-gray-800 text-sm min-w-35">
                 <span className="font-semibold text-red-700">🏁 Destination</span>
                 <p className="text-xs text-gray-600 mt-0.5">{destinationStop.stop_name}</p>
               </div>

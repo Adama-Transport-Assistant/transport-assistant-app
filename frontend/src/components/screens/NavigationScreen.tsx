@@ -36,6 +36,7 @@ export default function NavigationScreen({
       <div className="bg-primary text-white px-4 py-3 shrink-0">
         <div className="flex items-center gap-3">
           <button
+            title='Back'
             onClick={onBack}
             className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >

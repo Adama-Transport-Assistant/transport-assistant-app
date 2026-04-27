@@ -12,8 +12,18 @@ export type Route = {
  * We only extract what we need: route_id → shape_id mapping
  */
 export type Trip = {
+  trip_id: string;
   route_id: string;
   shape_id: string;
+};
+
+/**
+ * Minimal stop_times record used for direct trip matching
+ */
+export type StopTime = {
+  trip_id: string;
+  stop_id: string;
+  stop_sequence: number;
 };
 
 /**
