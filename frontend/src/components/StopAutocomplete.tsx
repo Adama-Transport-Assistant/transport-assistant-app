@@ -83,6 +83,7 @@ export default function StopAutocomplete({
         {(query || value) && (
           <button
             type="button"
+            title='Clear'
             onClick={handleClear}
             className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
           >

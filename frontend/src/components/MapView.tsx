@@ -106,7 +106,7 @@ function MapResizer() {
 }
 
 interface MapViewProps {
-  // selectedRoute?: RouteOption | null;
+  selectedRoute?: RouteOption | null;
   userLocation?: [number, number] | null;
   originLabel?: string;
   height?: string;
