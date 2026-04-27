@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Home, Heart, Search, WifiOff } from 'lucide-react';
+import { Home, Heart, Loader2, Search, WifiOff } from 'lucide-react';
 import MapView from '../MapView';
 import RouteSelector from '../RouteSelector';
 import StopAutocomplete from '../StopAutocomplete';
@@ -9,39 +9,49 @@ import { useTrips } from '../../hooks/useTrips';
 import { useShapes } from '../../hooks/useShapes';
 import { useStopTimes } from '../../hooks/useStopTimes';
 import type { Stop } from '../../types/Stop';
+import type { JourneyStep } from '../../types/Journey';
 import {
   findDirectGtfsRoute,
   type SelectedGtfsRoute,
 } from '../../utils/findDirectGtfsRoute';
+import { findTransferGtfsRoute } from '../../utils/findTransferGtfsRoute';
 import adamahero from '../../assets/adama-hero.png';
 
-type RouteInfo = {
-  name: string;
-  totalStops: number;
-  duration: number;
+type TransferRouteState = {
+  transferStop: string;
+  transferStopId: string;
+  route1: SelectedGtfsRoute;
+  route2: SelectedGtfsRoute;
+  route1Name: string;
+  route2Name: string;
+} | null;
+
+const stepIcon: Record<JourneyStep['type'], string> = {
+  walk: '🚶',
+  board: '🚌',
+  transfer: '🔁',
+  alight: '🚏',
+  arrive: '📍',
 };
 
 export default function HomeScreen() {
-  // GTFS data hooks
   const { stops, loading: stopsLoading, error: stopsError } = useStops();
   const { routes: gtfsRoutes, loading: routesLoading, error: routesError } = useRoutes();
   const { trips, loading: tripsLoading } = useTrips();
   const { shapesMap, loading: shapesLoading } = useShapes();
   const { stopTimes, loading: stopTimesLoading, error: stopTimesError } = useStopTimes();
 
-  // Route selection state (required in Step 5)
   const [selectedRoute, setSelectedRoute] = useState<SelectedGtfsRoute | null>(null);
-  const [directRouteError, setDirectRouteError] = useState<string | null>(null);
+  const [transferRoute, setTransferRoute] = useState<TransferRouteState>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [showStops, setShowStops] = useState(false);
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [journeySteps, setJourneySteps] = useState<JourneyStep[]>([]);
 
-  // User origin/destination stop selection
   const [originStop, setOriginStop] = useState<Stop | null>(null);
   const [destinationStop, setDestinationStop] = useState<Stop | null>(null);
 
   const selectedRouteId = selectedRoute?.route_id ?? null;
 
-  // Keep route dropdown working by mapping route_id -> first trip's shape_id
   const routeShapeByRouteId = useMemo(() => {
     const map = new Map<string, SelectedGtfsRoute>();
     for (const trip of trips) {
@@ -56,69 +66,126 @@ export default function HomeScreen() {
     return map;
   }, [trips]);
 
-  // Resolve selected shape to full route path (already sequence-sorted in useShapes)
   const gtfsRoutePath = useMemo(() => {
     if (!selectedRoute) return null;
     return shapesMap.get(selectedRoute.shape_id) ?? null;
   }, [selectedRoute, shapesMap]);
 
-  // Stops to display on map: hidden by default, shown only after successful "Find Route"
-  // and filtered to the currently selected trip.
+  const transferRoute1Path = useMemo(() => {
+    if (!transferRoute) return null;
+    return shapesMap.get(transferRoute.route1.shape_id) ?? null;
+  }, [transferRoute, shapesMap]);
+
+  const transferRoute2Path = useMemo(() => {
+    if (!transferRoute) return null;
+    return shapesMap.get(transferRoute.route2.shape_id) ?? null;
+  }, [transferRoute, shapesMap]);
+
+  const transferStop = useMemo(() => {
+    if (!transferRoute) return null;
+    return stops.find((stop) => stop.stop_id === transferRoute.transferStopId) ?? null;
+  }, [transferRoute, stops]);
+
   const routeStopIds = useMemo(() => {
-    if (!showStops || !selectedRoute) return new Set<string>();
+    if (!showStops) return new Set<string>();
+
     const ids = new Set<string>();
-    for (const stopTime of stopTimes) {
-      if (stopTime.trip_id === selectedRoute.trip_id) {
-        ids.add(stopTime.stop_id);
+    if (selectedRoute) {
+      for (const stopTime of stopTimes) {
+        if (stopTime.trip_id === selectedRoute.trip_id) {
+          ids.add(stopTime.stop_id);
+        }
       }
     }
+
+    if (transferRoute) {
+      for (const stopTime of stopTimes) {
+        if (
+          stopTime.trip_id === transferRoute.route1.trip_id ||
+          stopTime.trip_id === transferRoute.route2.trip_id
+        ) {
+          ids.add(stopTime.stop_id);
+        }
+      }
+    }
+
     return ids;
-  }, [showStops, selectedRoute, stopTimes]);
+  }, [showStops, selectedRoute, transferRoute, stopTimes]);
 
   const visibleStops = useMemo(() => {
-    if (!showStops || !selectedRoute || routeStopIds.size === 0) return [];
+    if (!showStops || routeStopIds.size === 0) return [];
     return stops.filter((stop) => routeStopIds.has(stop.stop_id));
-  }, [showStops, selectedRoute, routeStopIds, stops]);
+  }, [showStops, routeStopIds, stops]);
 
-  // Find selected route metadata for display
-  const selectedRouteInfo = gtfsRoutes.find((r) => r.route_id === selectedRouteId);
+  const selectedRouteInfo = gtfsRoutes.find((route) => route.route_id === selectedRouteId);
   const gtfsRouteLabel = selectedRouteInfo
     ? `${selectedRouteInfo.route_short_name} - ${selectedRouteInfo.route_long_name}`
     : undefined;
 
-  // Overall data loading state
   const isRouteDataLoading = tripsLoading || shapesLoading;
   const isFindRouteDataLoading = stopTimesLoading || tripsLoading || shapesLoading;
   const isFindRouteDisabled = !originStop || !destinationStop || isFindRouteDataLoading;
 
+  const resetRouteState = () => {
+    setSelectedRoute(null);
+    setTransferRoute(null);
+    setShowStops(false);
+    setJourneySteps([]);
+  };
+
+  const routeNameById = (routeId: string): string => {
+    const route = gtfsRoutes.find((item) => item.route_id === routeId);
+    return route ? `${route.route_short_name} - ${route.route_long_name}` : routeId;
+  };
+
+  const buildDirectJourneySteps = (routeName: string): JourneyStep[] => {
+    if (!originStop || !destinationStop) return [];
+    return [
+      { type: 'walk', label: `Walk to ${originStop.stop_name} stop` },
+      { type: 'board', label: `Take ${routeName}` },
+      { type: 'alight', label: `Ride until ${destinationStop.stop_name} and get off` },
+      { type: 'arrive', label: `Arrive at ${destinationStop.stop_name}` },
+    ];
+  };
+
+  const buildTransferJourneySteps = (route1Name: string, route2Name: string, transferName: string): JourneyStep[] => {
+    if (!originStop || !destinationStop) return [];
+    return [
+      { type: 'walk', label: `Walk to ${originStop.stop_name} stop` },
+      { type: 'board', label: `Take ${route1Name}` },
+      { type: 'alight', label: `Get off at ${transferName}` },
+      { type: 'transfer', label: `Transfer at ${transferName}` },
+      { type: 'board', label: `Take ${route2Name}` },
+      { type: 'alight', label: `Ride to ${destinationStop.stop_name}` },
+      { type: 'arrive', label: `Arrive at ${destinationStop.stop_name}` },
+    ];
+  };
+
   const handleOriginChange = (stop: Stop | null) => {
     setOriginStop(stop);
-    setSelectedRoute(null);
-    setShowStops(false);
-    setRouteInfo(null);
-    setDirectRouteError(null);
+    resetRouteState();
+    setSearchError(null);
   };
 
   const handleDestinationChange = (stop: Stop | null) => {
     setDestinationStop(stop);
-    setSelectedRoute(null);
-    setShowStops(false);
-    setRouteInfo(null);
-    setDirectRouteError(null);
+    resetRouteState();
+    setSearchError(null);
   };
 
   const handleSelectRoute = (routeId: string) => {
     const manualRoute = routeShapeByRouteId.get(routeId) ?? null;
     setSelectedRoute(manualRoute);
+    setTransferRoute(null);
     setShowStops(false);
-    setRouteInfo(null);
-    setDirectRouteError(null);
+    setJourneySteps([]);
+    setSearchError(null);
   };
 
   const handleFindRoute = () => {
     if (!originStop || !destinationStop) return;
 
-    const matchedRoute = findDirectGtfsRoute({
+    const directMatch = findDirectGtfsRoute({
       originStopId: originStop.stop_id,
       destinationStopId: destinationStop.stop_id,
       originStopName: originStop.stop_name,
@@ -130,43 +197,56 @@ export default function HomeScreen() {
       shapesMap,
     });
 
-    if (!matchedRoute) {
-      setSelectedRoute(null);
-      setShowStops(false);
-      setRouteInfo(null);
-      setDirectRouteError('No direct route found');
+    if (directMatch) {
+      const directRouteName = routeNameById(directMatch.route_id);
+      setSelectedRoute(directMatch);
+      setTransferRoute(null);
+      setShowStops(true);
+      setJourneySteps(buildDirectJourneySteps(directRouteName));
+      setSearchError(null);
       return;
     }
 
-    const matchedRouteMeta = gtfsRoutes.find((route) => route.route_id === matchedRoute.route_id);
-    const routeName = matchedRouteMeta
-      ? `${matchedRouteMeta.route_short_name} - ${matchedRouteMeta.route_long_name}`
-      : matchedRoute.route_id;
-
-    const matchedStopIds = new Set<string>();
-    for (const stopTime of stopTimes) {
-      if (stopTime.trip_id === matchedRoute.trip_id) {
-        matchedStopIds.add(stopTime.stop_id);
-      }
-    }
-    const totalStops = stops.filter((stop) => matchedStopIds.has(stop.stop_id)).length;
-    const duration = Math.round(totalStops * 1.5);
-
-    setSelectedRoute(matchedRoute);
-    setShowStops(true);
-    setRouteInfo({
-      name: routeName,
-      totalStops,
-      duration,
+    const transferMatch = findTransferGtfsRoute({
+      originStopId: originStop.stop_id,
+      destinationStopId: destinationStop.stop_id,
+      originStopName: originStop.stop_name,
+      destinationStopName: destinationStop.stop_name,
+      stopTimes,
+      trips,
+      stops,
+      shapesMap,
     });
-    setDirectRouteError(null);
+
+    if (!transferMatch) {
+      resetRouteState();
+      setSearchError('No route found');
+      return;
+    }
+
+    const transferStopName =
+      stops.find((stop) => stop.stop_id === transferMatch.transferStopId)?.stop_name ??
+      transferMatch.transferStopId;
+    const route1Name = routeNameById(transferMatch.route1.route_id);
+    const route2Name = routeNameById(transferMatch.route2.route_id);
+
+    setSelectedRoute(null);
+    setTransferRoute({
+      transferStop: transferStopName,
+      transferStopId: transferMatch.transferStopId,
+      route1: transferMatch.route1,
+      route2: transferMatch.route2,
+      route1Name,
+      route2Name,
+    });
+    setShowStops(true);
+    setJourneySteps(buildTransferJourneySteps(route1Name, route2Name, transferStopName));
+    setSearchError(null);
   };
 
   return (
     <div className="flex flex-col md:flex-row h-full bg-gray-50 screen-enter">
-      {/* Left column / main content */}
-      <div className="flex flex-col h-full md:w-105 lg:w-120 md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:overflow-y-auto">
-        {/* Hero Section */}
+      <div className="flex flex-col h-full overflow-y-auto md:w-105 lg:w-120 md:shrink-0 md:border-r md:border-gray-200 md:bg-white">
         <div
           className="relative text-white px-5 pt-10 pb-20 md:pt-8 md:pb-16 md:m-4 md:rounded-2xl shrink-0 overflow-hidden bg-cover bg-center"
           style={{ backgroundImage: `url(${adamahero})` }}
@@ -182,9 +262,8 @@ export default function HomeScreen() {
           </div>
         </div>
 
-        {/* Floating Card: Origin / Destination + Route Selector */}
         <div className="px-4 md:px-5 -mt-14 md:-mt-10 relative z-10">
-          <div className="floating-card space-y-3">
+          <div className="floating-card space-y-3.5">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Where are you going?</p>
 
             <StopAutocomplete
@@ -207,40 +286,36 @@ export default function HomeScreen() {
               type="button"
               onClick={handleFindRoute}
               disabled={isFindRouteDisabled}
-              className="w-full text-white bg-primary hover:bg-primary-light font-medium rounded-xl text-sm px-4 py-3 text-center flex justify-center items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-white bg-primary hover:bg-primary-light font-medium rounded-xl text-base md:text-sm px-5 py-3.5 text-center flex justify-center items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isFindRouteDataLoading ? (
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={18} className="animate-spin" />
               ) : (
-                <Search size={16} />
+                <Search size={18} />
               )}
               Find Route
             </button>
 
-            {routeInfo && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 space-y-1.5">
-                <p className="text-sm font-semibold text-primary leading-snug break-words">
-                  {routeInfo.name}
-                </p>
-                <p className="text-xs text-gray-700">
-                  Transport: <span className="font-medium">Bus</span>
-                </p>
-                <p className="text-xs text-gray-700">
-                  Stops: <span className="font-medium">{routeInfo.totalStops}</span>
-                </p>
-                <p className="text-xs text-gray-700">
-                  Duration: <span className="font-medium">~{routeInfo.duration} mins</span>
-                </p>
+            {journeySteps.length > 0 && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+                <p className="text-sm font-semibold text-primary mb-2">Your Trip</p>
+                <ul className="max-h-56 md:max-h-64 overflow-y-auto pr-1 space-y-1.5">
+                  {journeySteps.map((step, index) => (
+                    <li key={`${step.type}-${index}`} className="flex items-start gap-2.5 py-1">
+                      <span className="text-base leading-none mt-0.5">{stepIcon[step.type]}</span>
+                      <span className="text-sm text-gray-700 leading-snug break-words">{step.label}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
-            {directRouteError && (
+            {searchError && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl border border-red-200">
-                {directRouteError}
+                {searchError}
               </p>
             )}
 
-            {/* Divider */}
             <div className="border-t border-gray-100 pt-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Or select a bus route</p>
             </div>
@@ -253,7 +328,6 @@ export default function HomeScreen() {
               onSelectRoute={handleSelectRoute}
             />
 
-            {/* Data loading indicator */}
             {isRouteDataLoading && (
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Loader2 size={12} className="animate-spin" />
@@ -261,7 +335,6 @@ export default function HomeScreen() {
               </div>
             )}
 
-            {/* stop_times loading/error indicator for Find Route */}
             {stopTimesLoading && (
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Loader2 size={12} className="animate-spin" />
@@ -273,20 +346,9 @@ export default function HomeScreen() {
                 {stopTimesError}
               </p>
             )}
-
-            {/* Selected route path feedback */}
-            {selectedRoute && !isRouteDataLoading && gtfsRoutePath && (
-              <p className="text-xs text-gray-400">
-                Route drawn with {gtfsRoutePath.length.toLocaleString()} shape points
-              </p>
-            )}
-            {selectedRoute && !isRouteDataLoading && !gtfsRoutePath && (
-              <p className="text-xs text-orange-500">No shape data found for this route</p>
-            )}
           </div>
         </div>
 
-        {/* Stops Loading / Error Indicator */}
         {stopsLoading && (
           <div className="px-5 mt-3">
             <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
@@ -308,9 +370,8 @@ export default function HomeScreen() {
           </div>
         )}
 
-        {/* Map Preview - mobile only */}
-        <div className="px-4 mt-4 flex-1 min-h-0 pb-2 md:hidden">
-          <div className="rounded-2xl overflow-hidden shadow-md h-full min-h-50">
+        <div className="px-4 mt-4 pb-4 md:hidden">
+          <div className="rounded-2xl overflow-hidden shadow-md h-[65vh] min-h-[60vh] max-h-[70vh]">
             <MapView
               selectedRoute={null}
               height="100%"
@@ -318,14 +379,16 @@ export default function HomeScreen() {
               showControls={false}
               stops={visibleStops}
               gtfsRoutePath={gtfsRoutePath}
+              transferRoute1Path={transferRoute1Path}
+              transferRoute2Path={transferRoute2Path}
               gtfsRouteLabel={gtfsRouteLabel}
               originStop={originStop}
               destinationStop={destinationStop}
+              transferStop={transferStop}
             />
           </div>
         </div>
 
-        {/* Bottom Navigation */}
         <div className="bottom-nav shrink-0 md:mt-auto md:border-t md:border-gray-200">
           <button className="bottom-nav-item active">
             <Home size={20} />
@@ -342,7 +405,6 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Right column: map (desktop only) */}
       <div className="hidden md:block flex-1 h-full">
         <MapView
           selectedRoute={null}
@@ -351,9 +413,12 @@ export default function HomeScreen() {
           showControls={true}
           stops={visibleStops}
           gtfsRoutePath={gtfsRoutePath}
+          transferRoute1Path={transferRoute1Path}
+          transferRoute2Path={transferRoute2Path}
           gtfsRouteLabel={gtfsRouteLabel}
           originStop={originStop}
           destinationStop={destinationStop}
+          transferStop={transferStop}
         />
       </div>
     </div>
