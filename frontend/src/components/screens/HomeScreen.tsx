@@ -303,7 +303,7 @@ export default function HomeScreen() {
                   {journeySteps.map((step, index) => (
                     <li key={`${step.type}-${index}`} className="flex items-start gap-2.5 py-1">
                       <span className="text-base leading-none mt-0.5">{stepIcon[step.type]}</span>
-                      <span className="text-sm text-gray-700 leading-snug break-words">{step.label}</span>
+                      <span className="text-sm text-gray-700 leading-snug wrap-break-word">{step.label}</span>
                     </li>
                   ))}
                 </ul>
