@@ -59,7 +59,7 @@ export default function NavigationScreen({
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
         {/* --- LEFT PANEL (instructions) - desktop only uses this as sidebar --- */}
-        <div className="hidden md:flex md:flex-col md:w-[420px] lg:w-[480px] md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto">
+        <div className="hidden md:flex md:flex-col md:w-105 lg:w-120 md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto">
           {/* Steps */}
           <div className="px-5 pt-5 pb-3">
             {route.steps.map((step, index) => (

@@ -249,8 +249,8 @@ export default function MapView({
           />
         )}
 
-        {/* GTFS Route Start & End Markers */}
-        {(() => {
+        {/* GTFS Route Start & End Markers (only when user A/B stops are not set) */}
+        {!originStop && !destinationStop && (() => {
           const endpoints = getStartAndEndPoints(gtfsRoutePath);
           if (!endpoints) return null;
           return (
