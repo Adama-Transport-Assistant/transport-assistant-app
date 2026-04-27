@@ -18,10 +18,10 @@ export default function RouteResults({ routes, selectedRouteId, onSelectRoute }:
       </h3>
       {routes.map((route) => {
         const isSelected = selectedRouteId === route.id;
-        
+
         return (
-          <div 
-            key={route.id} 
+          <div
+            key={route.id}
             onClick={() => onSelectRoute(route.id)}
             className={`transition-colors rounded-xl p-4 cursor-pointer border ${isSelected ? 'bg-gray-800 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
           >
@@ -40,7 +40,7 @@ export default function RouteResults({ routes, selectedRouteId, onSelectRoute }:
               </div>
               <span className="text-green-400 font-bold">{route.fareETB} ETB</span>
             </div>
-            
+
             <div className="flex gap-4 text-sm text-gray-400 mt-3">
               <div className="flex items-center gap-1">
                 <Clock size={14} />

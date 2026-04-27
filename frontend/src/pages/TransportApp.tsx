@@ -9,17 +9,11 @@ type Screen = 'HOME' | 'OPTIONS' | 'NAVIGATION';
 export default function TransportApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('HOME');
   const [origin, setOrigin] = useState('');
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [destination, setDestination] = useState('');
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-
-  const handleSetOrigin = (val: string, coords?: [number, number]) => {
-    setOrigin(val);
-    if (coords) setUserLocation(coords);
-  };
 
   const handleSearch = () => {
     setIsSearching(true);
@@ -28,15 +22,14 @@ export default function TransportApp() {
     setSelectedRouteId(null);
 
     setTimeout(() => {
-      // Find matching routes. User might be at a reverse geocoded place, so we loosely match.
       const matchedRoutes = mockRoutes.filter(r =>
         r.destination.toLowerCase() === destination.toLowerCase() &&
-        (userLocation !== null || origin === 'Your Location' || r.origin.toLowerCase().includes(origin.toLowerCase()) || origin.toLowerCase().includes(r.origin.toLowerCase()))
+        (origin === '' || r.origin.toLowerCase().includes(origin.toLowerCase()) || origin.toLowerCase().includes(r.origin.toLowerCase()))
       );
 
       if (matchedRoutes.length > 0) {
         setRoutes(matchedRoutes);
-        setSelectedRouteId(matchedRoutes[0].id); // Auto-select first route
+        setSelectedRouteId(matchedRoutes[0].id);
       } else {
         setSearchError('Route not found between these locations.');
       }
@@ -49,18 +42,7 @@ export default function TransportApp() {
   return (
     <div className="app-shell h-screen overflow-hidden">
       {currentScreen === 'HOME' && (
-        <HomeScreen
-          origin={origin}
-          setOrigin={handleSetOrigin}
-          destination={destination}
-          setDestination={setDestination}
-          onSearch={handleSearch}
-          isSearching={isSearching}
-          searchError={searchError}
-          userLocation={userLocation}
-          onScreenChange={(screen) => setCurrentScreen(screen)}
-          routes={routes}
-        />
+        <HomeScreen />
       )}
 
       {currentScreen === 'OPTIONS' && (
@@ -72,7 +54,7 @@ export default function TransportApp() {
           onNavigate={() => {
             if (selectedRouteId) setCurrentScreen('NAVIGATION');
           }}
-          userLocation={userLocation}
+          userLocation={null}
           origin={origin}
         />
       )}
@@ -87,7 +69,7 @@ export default function TransportApp() {
             setSelectedRouteId(null);
             setDestination('');
           }}
-          userLocation={userLocation}
+          userLocation={null}
           origin={origin}
         />
       )}
