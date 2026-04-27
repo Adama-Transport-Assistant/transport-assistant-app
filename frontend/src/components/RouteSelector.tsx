@@ -69,7 +69,7 @@ export default function RouteSelector({
           setIsOpen(!isOpen);
           setSearch('');
         }}
-        className="w-full flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl px-3 py-3 hover:border-primary/50 transition-all duration-200 cursor-pointer"
+        className="w-full flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-800 text-base md:text-sm rounded-xl px-3 py-3.5 md:py-3 hover:border-primary/50 transition-all duration-200 cursor-pointer"
       >
         <Bus size={16} className="text-primary shrink-0" />
         <span className="flex-1 text-left truncate">

@@ -67,7 +67,7 @@ export default function StopAutocomplete({
         </div>
         <input
           type="text"
-          className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl pl-10 pr-9 py-3 placeholder-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+          className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-base md:text-sm rounded-xl pl-10 pr-9 py-3.5 md:py-3 placeholder-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
