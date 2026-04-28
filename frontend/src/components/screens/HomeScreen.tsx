@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Home, Heart, Loader2, Search, WifiOff } from 'lucide-react';
+import { Home, Heart, Loader2, Search, WifiOff, Brain } from 'lucide-react';
 import MapView from '../MapView';
 import RouteSelector from '../RouteSelector';
 import StopAutocomplete from '../StopAutocomplete';
@@ -26,6 +26,19 @@ type TransferRouteState = {
   route2Name: string;
 } | null;
 
+interface RouteMetrics {
+  durationMins: number;
+  totalStops: number;
+  transfers: number;
+}
+
+interface RouteSuggestion {
+  type: 'direct' | 'transfer';
+  routeName: string;
+  reason: string;
+  advantages: string[];
+}
+
 const stepIcon: Record<JourneyStep['type'], string> = {
   walk: '🚶',
   board: '🚌',
@@ -46,6 +59,7 @@ export default function HomeScreen() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showStops, setShowStops] = useState(false);
   const [journeySteps, setJourneySteps] = useState<JourneyStep[]>([]);
+  const [routeSuggestion, setRouteSuggestion] = useState<RouteSuggestion | null>(null);
 
   const [originStop, setOriginStop] = useState<Stop | null>(null);
   const [destinationStop, setDestinationStop] = useState<Stop | null>(null);
@@ -131,6 +145,47 @@ export default function HomeScreen() {
     setTransferRoute(null);
     setShowStops(false);
     setJourneySteps([]);
+    setRouteSuggestion(null);
+  };
+
+  const calculateRouteMetrics = (route: SelectedGtfsRoute): RouteMetrics => {
+    const tripStopTimes = stopTimes.filter(st => st.trip_id === route.trip_id);
+    if (tripStopTimes.length === 0) return { durationMins: 0, totalStops: 0, transfers: 0 };
+
+    const sorted = tripStopTimes.sort((a, b) => a.stop_sequence - b.stop_sequence);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+
+    if (!first?.departure_time || !last?.arrival_time) {
+      return { durationMins: 0, totalStops: sorted.length, transfers: 0 };
+    }
+
+    // Convert HH:MM:SS to minutes
+    const depParts = first.departure_time.split(':');
+    const arrParts = last.arrival_time.split(':');
+    if (depParts.length !== 3 || arrParts.length !== 3) {
+      return { durationMins: 0, totalStops: sorted.length, transfers: 0 };
+    }
+
+    const [h1, m1, s1] = depParts.map(Number);
+    const [h2, m2, s2] = arrParts.map(Number);
+    const durationMins = (h2 * 60 + m2 + s2 / 60) - (h1 * 60 + m1 + s1 / 60);
+
+    return {
+      durationMins: Math.max(1, Math.round(durationMins)),
+      totalStops: sorted.length,
+      transfers: 0,
+    };
+  };
+
+  const calculateTransferMetrics = (route1: SelectedGtfsRoute, route2: SelectedGtfsRoute): RouteMetrics => {
+    const metrics1 = calculateRouteMetrics(route1);
+    const metrics2 = calculateRouteMetrics(route2);
+    return {
+      durationMins: metrics1.durationMins + metrics2.durationMins,
+      totalStops: metrics1.totalStops + metrics2.totalStops,
+      transfers: 1,
+    };
   };
 
   const routeNameById = (routeId: string): string => {
@@ -179,6 +234,7 @@ export default function HomeScreen() {
     setTransferRoute(null);
     setShowStops(false);
     setJourneySteps([]);
+    setRouteSuggestion(null);
     setSearchError(null);
   };
 
@@ -197,14 +253,9 @@ export default function HomeScreen() {
       shapesMap,
     });
 
+    let directMetrics: RouteMetrics | null = null;
     if (directMatch) {
-      const directRouteName = routeNameById(directMatch.route_id);
-      setSelectedRoute(directMatch);
-      setTransferRoute(null);
-      setShowStops(true);
-      setJourneySteps(buildDirectJourneySteps(directRouteName));
-      setSearchError(null);
-      return;
+      directMetrics = calculateRouteMetrics(directMatch);
     }
 
     const transferMatch = findTransferGtfsRoute({
@@ -217,6 +268,85 @@ export default function HomeScreen() {
       stops,
       shapesMap,
     });
+
+    let transferMetrics: RouteMetrics | null = null;
+    if (transferMatch) {
+      transferMetrics = calculateTransferMetrics(transferMatch.route1, transferMatch.route2);
+    }
+
+    // Decision logic
+    let suggestion: RouteSuggestion | null = null;
+    if (directMatch && transferMatch) {
+      // Both available, compare
+      if (directMetrics!.transfers < transferMetrics!.transfers) {
+        // Prefer direct
+        suggestion = {
+          type: 'direct',
+          routeName: routeNameById(directMatch.route_id),
+          reason: 'Direct route — faster and no transfers.',
+          advantages: [
+            `Faster by ~${transferMetrics!.durationMins - directMetrics!.durationMins} mins`,
+            'No transfers needed',
+            'Simpler journey',
+          ],
+        };
+      } else if (directMetrics!.durationMins < transferMetrics!.durationMins) {
+        suggestion = {
+          type: 'direct',
+          routeName: routeNameById(directMatch.route_id),
+          reason: 'Direct route — faster despite transfers.',
+          advantages: [
+            `Faster by ~${transferMetrics!.durationMins - directMetrics!.durationMins} mins`,
+            'Fewer stops',
+            'Direct connection',
+          ],
+        };
+      } else {
+        suggestion = {
+          type: 'transfer',
+          routeName: `${routeNameById(transferMatch.route1.route_id)} → ${routeNameById(transferMatch.route2.route_id)}`,
+          reason: 'Transfer route — comparable time with fewer stops.',
+          advantages: [
+            'Fewer stops overall',
+            'Alternative option',
+            'May have better traffic conditions',
+          ],
+        };
+      }
+    } else if (directMatch) {
+      suggestion = {
+        type: 'direct',
+        routeName: routeNameById(directMatch.route_id),
+        reason: 'Direct route — only option available.',
+        advantages: [
+          'No transfers',
+          'Straightforward journey',
+          'Reliable connection',
+        ],
+      };
+    } else if (transferMatch) {
+      suggestion = {
+        type: 'transfer',
+        routeName: `${routeNameById(transferMatch.route1.route_id)} → ${routeNameById(transferMatch.route2.route_id)}`,
+        reason: 'Transfer route — only option available.',
+        advantages: [
+          'Reaches destination',
+          'With one transfer',
+          'Alternative route',
+        ],
+      };
+    }
+
+    if (directMatch) {
+      const directRouteName = routeNameById(directMatch.route_id);
+      setSelectedRoute(directMatch);
+      setTransferRoute(null);
+      setShowStops(true);
+      setJourneySteps(buildDirectJourneySteps(directRouteName));
+      setRouteSuggestion(suggestion);
+      setSearchError(null);
+      return;
+    }
 
     if (!transferMatch) {
       resetRouteState();
@@ -241,6 +371,7 @@ export default function HomeScreen() {
     });
     setShowStops(true);
     setJourneySteps(buildTransferJourneySteps(route1Name, route2Name, transferStopName));
+    setRouteSuggestion(suggestion);
     setSearchError(null);
   };
 
@@ -295,6 +426,28 @@ export default function HomeScreen() {
               )}
               Find Route
             </button>
+
+            {routeSuggestion && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Brain size={18} className="text-blue-600" />
+                  <p className="text-sm font-semibold text-blue-800">Smart Suggestion</p>
+                </div>
+                <div className="text-sm text-blue-700 mb-2">
+                  <span className="font-medium">✅ Recommended: {routeSuggestion.routeName}</span>
+                  <br />
+                  <span className="text-xs">{routeSuggestion.reason}</span>
+                </div>
+                <ul className="text-xs text-blue-600 space-y-1">
+                  {routeSuggestion.advantages.map((adv, idx) => (
+                    <li key={idx} className="flex items-center gap-1">
+                      <span>✔</span>
+                      <span>{adv}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {journeySteps.length > 0 && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
