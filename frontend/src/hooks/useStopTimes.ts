@@ -34,11 +34,13 @@ export function useStopTimes(): UseStopTimesResult {
 
                 const rows = parseCsv(text);
                 const parsed: StopTime[] = rows
-                    .filter((r) => r.trip_id && r.stop_id && r.stop_sequence)
+                    .filter((r) => r.trip_id && r.stop_id && r.stop_sequence && r.arrival_time && r.departure_time)
                     .map((r) => ({
                         trip_id: r.trip_id,
                         stop_id: r.stop_id,
                         stop_sequence: parseInt(r.stop_sequence, 10),
+                        arrival_time: r.arrival_time,
+                        departure_time: r.departure_time,
                     }))
                     .filter((r) => Number.isFinite(r.stop_sequence));
 
