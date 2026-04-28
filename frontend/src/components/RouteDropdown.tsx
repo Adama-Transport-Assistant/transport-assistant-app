@@ -12,7 +12,7 @@ export default function RouteDropdown({ value, onChange }: RouteDropdownProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const filteredLocations = locations.filter(loc =>
+  const filteredLocations = locations.filter((loc) =>
     loc.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -42,7 +42,8 @@ export default function RouteDropdown({ value, onChange }: RouteDropdownProps) {
       </div>
       <input
         type="text"
-        className="w-full bg-gray-900 border border-gray-700 text-gray-200 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block px-10 p-2.5 placeholder-gray-500 outline-none transition-colors cursor-text"
+        aria-label="Where to?"
+        className="w-full bg-gray-900 border border-gray-700 text-gray-200 text-base md:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block px-10 py-3.5 placeholder-gray-500 outline-none transition-colors cursor-text touch-manipulation"
         placeholder="Where to?"
         value={isOpen ? searchTerm : (value || '')}
         onChange={(e) => {
@@ -57,14 +58,14 @@ export default function RouteDropdown({ value, onChange }: RouteDropdownProps) {
       />
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden max-h-72 md:max-h-60 overflow-y-auto">
           {filteredLocations.length > 0 ? (
             <ul className="py-1 text-sm text-gray-200">
               {filteredLocations.map((loc) => (
                 <li key={loc}>
                   <button
                     type="button"
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 hover:text-green-400 transition-colors"
+                    className="w-full text-left px-4 py-3 text-base md:text-sm hover:bg-gray-700 hover:text-green-400 transition-colors touch-manipulation"
                     onClick={() => handleSelect(loc)}
                   >
                     {loc}
