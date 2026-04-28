@@ -67,7 +67,8 @@ export default function StopAutocomplete({
         </div>
         <input
           type="text"
-          className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-base md:text-sm rounded-xl pl-10 pr-9 py-3.5 md:py-3 placeholder-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+          aria-label={placeholder}
+          className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-base md:text-sm rounded-xl pl-10 pr-10 py-4 md:py-3 placeholder-gray-400 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation"
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
@@ -100,12 +101,12 @@ export default function StopAutocomplete({
       {/* Suggestions dropdown */}
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-          <ul className="max-h-48 overflow-y-auto py-1">
+          <ul className="max-h-56 md:max-h-48 overflow-y-auto py-1">
             {suggestions.map((stop) => (
               <li key={stop.stop_id}>
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-3 text-base md:text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors flex items-center gap-3 touch-manipulation"
                   onClick={() => handleSelect(stop)}
                 >
                   <MapPin size={12} className="text-gray-400 shrink-0" />

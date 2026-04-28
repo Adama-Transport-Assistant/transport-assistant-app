@@ -40,7 +40,7 @@ export default function StopMarkers({ stops, originId, destinationId, transferId
             }}
           >
             <Popup>
-              <div className="text-gray-800 text-sm min-w-[140px]">
+              <div className="text-gray-800 text-sm min-w-35">
                 <span className="font-semibold">{isOrigin ? '🟢 ' : isTransfer ? '🟠 ' : isDestination ? '🔴 ' : '🚏 '} {stop.stop_name}</span>
                 <p className="text-[10px] text-gray-400 mt-1">
                   {stop.stop_lat.toFixed(5)}, {stop.stop_lon.toFixed(5)}
