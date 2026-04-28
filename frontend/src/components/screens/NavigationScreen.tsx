@@ -30,6 +30,8 @@ export default function NavigationScreen({
   userLocation,
   origin,
 }: NavigationScreenProps) {
+  const totalStops = route.path && route.path.length > 0 ? route.path.length : route.steps.length ?? 0;
+  const estimatedFare = 10 + Math.floor(totalStops / 5) * 2;
   return (
     <div className="flex flex-col h-full bg-gray-50 screen-enter">
       {/* Header */}
@@ -60,8 +62,24 @@ export default function NavigationScreen({
 
         {/* --- LEFT PANEL (instructions) - desktop only uses this as sidebar --- */}
         <div className="hidden md:flex md:flex-col md:w-105 lg:w-120 md:shrink-0 md:border-r md:border-gray-200 md:bg-white md:h-full md:overflow-y-auto">
-          {/* Steps */}
+          {/* Summary */}
           <div className="px-5 pt-5 pb-3">
+            <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-gray-500">Fare</div>
+                  <div className="text-lg font-semibold text-gray-900">💰 ~{estimatedFare} ETB</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Duration</div>
+                  <div className="text-lg font-semibold text-gray-900">⏱ {route.durationMins} mins</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div className="px-5 pb-3 space-y-2">
             {route.steps.map((step, index) => (
               <div key={index} className="instruction-step">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shrink-0 mt-0.5">
@@ -78,16 +96,6 @@ export default function NavigationScreen({
                 </div>
               </div>
             ))}
-            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-secondary" />
-                <span className="text-sm font-semibold text-gray-800">ETA: {route.durationMins} mins</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Banknote size={16} className="text-primary" />
-                <span className="text-sm font-semibold text-gray-800">Cost: {route.fareETB} ETB</span>
-              </div>
-            </div>
           </div>
           <div className="px-5 pb-3">
             <div className="offline-banner">

@@ -261,7 +261,14 @@ export default function MapView({
           </Marker>
         )}
 
-        {stops.length > 0 && <StopMarkers stops={stops} />}
+        {stops.length > 0 && (
+          <StopMarkers
+            stops={stops}
+            originId={originStop ? originStop.stop_id : null}
+            destinationId={destinationStop ? destinationStop.stop_id : null}
+            transferId={transferStop ? transferStop.stop_id : null}
+          />
+        )}
 
         {transferRoute1Path && transferRoute1Path.length > 1 && (
           <Polyline

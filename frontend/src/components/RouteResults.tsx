@@ -18,6 +18,8 @@ export default function RouteResults({ routes, selectedRouteId, onSelectRoute }:
       </h3>
       {routes.map((route) => {
         const isSelected = selectedRouteId === route.id;
+        const totalStops = route.path ? route.path.length : 0;
+        const estimatedFare = 10 + Math.floor(totalStops / 5) * 2;
 
         return (
           <div
@@ -26,6 +28,12 @@ export default function RouteResults({ routes, selectedRouteId, onSelectRoute }:
             className={`transition-colors rounded-xl p-4 cursor-pointer border ${isSelected ? 'bg-gray-800 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
           >
             <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-3">
+                <div className="text-sm">
+                  <div className="text-gray-300 text-xs">Fare</div>
+                  <div className="font-semibold text-gray-100">~{estimatedFare} ETB</div>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 {route.type === 'minibus' ? (
                   <div className="p-2 bg-blue-900/30 text-blue-400 rounded-lg">
